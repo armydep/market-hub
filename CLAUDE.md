@@ -1,10 +1,11 @@
 # market-hub
 
 Spring Boot backend for a crypto price dashboard: a scheduled poller upserts a top-N coin universe
-from CoinMarketCap (behind a `PriceProvider` seam) into Postgres; registered users (JWT) manage
-multiple boards that view the universe minus per-board exclusions with custom columns/sort, plus
-one-shot in-app price alerts evaluated after each poll. Guests get public market reads only, with
-their state held client-side. Crypto-only, USD-only in Phase 1.
+from CoinMarketCap (behind a `PriceProvider` seam) into Postgres; registered users (JWT, role-based:
+`TRADER`/`ADMIN`, with `MODERATOR` reserved) manage multiple boards that view the universe minus
+per-board exclusions with custom columns/sort, plus one-shot in-app price alerts evaluated after each
+poll. Guests are the anonymous principal (public market reads only, state held client-side). A React
+SPA (out of scope here) is the client. Crypto-only, USD-only in Phase 1.
 
 ## Context docs (read these first)
 @docs/domain-model.md
@@ -30,6 +31,7 @@ Run from `backend/`:
 - All external price access goes through `PriceProvider`; only the poller touches it (never the read path).
 - Errors via `ApiException` + the single `GlobalExceptionHandler`; cross-user access returns 404.
 - Auth’d ownership scoping through the `CurrentUser` helper on every board/alert operation.
+- RBAC: single `User.role` enum + `RoleHierarchy` (`ADMIN>MODERATOR>TRADER`); role is a JWT claim; admin seeded from env.
 - Tests use real Postgres (Testcontainers) and a stub `PriceProvider`; no live CMC calls in tests.
 - Money as `BigDecimal`/`numeric`, never `double`. Timestamps `timestamptz`, UTC.
 - Keep decisions in the docs above in sync when behavior changes; they are the source of truth.

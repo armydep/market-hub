@@ -12,7 +12,18 @@ Registered account. Owns boards and alerts. Guests are **not** persisted — no 
 | id | bigint identity | PK |
 | email | varchar unique | stored lowercased; uniqueness is case-insensitive |
 | passwordHash | varchar | BCrypt |
+| role | varchar | `TRADER` \| `MODERATOR` \| `ADMIN`; default `TRADER` at registration |
 | createdAt | timestamptz | |
+
+**Roles / RBAC.** Single `role` per user (enum column, not a join table). A Spring `RoleHierarchy`
+grants downward: `ADMIN > MODERATOR > TRADER`, so an admin implicitly holds trader authorities.
+The role is carried as a **JWT claim** (stateless authz — no per-request DB lookup). Only an admin
+may change another user's role; registration always mints `TRADER`.
+- **`GUEST` is not a stored role** — it is the *anonymous/unauthenticated* principal (no user row,
+  no token), consistent with "guests are not persisted". Public GET market reads are the only thing
+  a guest can do.
+- **`MODERATOR` is reserved but unused in Phase 1** — no user-generated content exists to moderate.
+  The value exists in the enum + hierarchy so the seam is ready; no endpoint grants or requires it yet.
 
 ### CryptoQuote — poller-owned read-model (NOT user data)
 One row per coin in the tracked top-N universe. Fully re-upserted every poll cycle. This is a cache,

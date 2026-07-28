@@ -31,6 +31,15 @@
 - **Error contract:** a single `@RestControllerAdvice` maps `ApiException`(status,msg) and validation
   failures to a consistent JSON body `{timestamp,status,error,message,details?}`.
 - **Cross-user access → 404**, not 403 (no id enumeration).
+- **RBAC via a single role + role hierarchy.** `User.role` is one enum (`TRADER|MODERATOR|ADMIN`),
+  not a join table; a Spring `RoleHierarchy` (`ADMIN > MODERATOR > TRADER`) grants downward. Role
+  travels as a **JWT claim** so authorization is stateless; the `JwtAuthFilter` maps the claim to
+  authorities (replaces the earlier hardcoded single authority). `GUEST` is the anonymous principal,
+  never a stored role. Registration always mints `TRADER`; only an admin changes roles. Rationale:
+  4 roles with a natural superset structure don't need orthogonal multi-role bookkeeping.
+- **Admin bootstrap is env-provisioned.** On startup, if no admin exists, seed one from
+  `ADMIN_EMAIL` / `ADMIN_PASSWORD` (BCrypt-hashed). No admin credential is committed to VCS and
+  fresh environments get a working admin without manual DB edits. Registration cannot self-elevate.
 
 ## Non-inferable constraints (would not be obvious from code later)
 - **CoinMarketCap free/basic is credit-metered** (~10k calls/month; credits weighted by coins-per-call)
@@ -44,6 +53,13 @@
   a future crossing. Do not "fix" it into fire-immediately.
 - Board semantics are **universe-minus-exclusions**, deliberately (watchlist/include-set was
   considered and rejected). Do not reintroduce a curated per-board coin list without a new decision.
+- `MODERATOR` is a **reserved, unimplemented role** in Phase 1 (no content to moderate). It exists in
+  the enum + hierarchy only; do not add moderator-gated endpoints until a moderation domain (e.g.
+  shared/public boards) is introduced by a new decision.
+- **Frontend is a React SPA (client only).** Chosen stack for the future client: React + Vite +
+  TypeScript, TanStack Query (polls `/market/coins`), TanStack Table (custom columns/sort/exclusions),
+  Zustand + persist (guest state in `localStorage`). This is recorded for continuity but the SPA is
+  **not built or documented as a slice here** — the backend docs stay backend-only (see Non-goals).
 
 ## Non-goals (Phase 1)
 - Frontend / SPA implementation (a React client consumes the API; not built or documented here beyond
