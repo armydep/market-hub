@@ -41,4 +41,4 @@ app:
 
 logging:
   level:
-    com.am.market_hub: INFO
+    com.am.market_hub: ${APP_LOG_LEVEL:INFO}
