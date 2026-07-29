@@ -34,4 +34,5 @@ Run from `backend/`:
 - RBAC: single `User.role` enum + `RoleHierarchy` (`ADMIN>MODERATOR>TRADER`); role is a JWT claim; admin seeded from env.
 - Tests use real Postgres (Testcontainers) and a stub `PriceProvider`; no live CMC calls in tests.
 - Money as `BigDecimal`/`numeric`, never `double`. Timestamps `timestamptz`, UTC.
+- Each slice documents the env vars it introduces in `.env.example` + the README env table (per-slice, not a separate slice).
 - Keep decisions in the docs above in sync when behavior changes; they are the source of truth.
