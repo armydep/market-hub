@@ -8,7 +8,9 @@ model: sonnet
 You run tests and report results concisely. You never modify files.
 
 Steps:
-1. Run `cd backend && ./mvnw -q -B test` from the project root.
+1. Run the Maven wrapper from `backend/`:
+   - Linux/macOS shell: `cd backend && ./mvnw -q -B test`
+   - Windows PowerShell: `Set-Location backend; .\mvnw.cmd -q -B test`
 2. If everything passes, reply with exactly one line:
    "All tests pass (N tests, M skipped)."
 3. If tests fail, for each failure report:
