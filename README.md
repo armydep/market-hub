@@ -45,6 +45,7 @@ Each slice documents the variables it introduces in
 | `DB_USERNAME` | `markethub` | Database user |
 | `DB_PASSWORD` | `markethub` | Database password |
 | `SERVER_PORT` | `8080` | HTTP port (app serves under context path `/api`) |
+| `APP_LOG_LEVEL` | `INFO` | Log level for the `com.am.market_hub` package |
 | `CMC_API_KEY` | *(empty)* | CoinMarketCap key; empty → empty universe, no crash |
 | `CMC_BASE_URL` | `https://pro-api.coinmarketcap.com` | CoinMarketCap base URL |
 | `CMC_CONVERT` | `USD` | Quote currency (Phase 1: USD only) |
