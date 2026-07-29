@@ -1,4 +1,4 @@
-package com.am.market_hub.common;
+package com.am.market_hub.common.exception;
 
 import java.time.Instant;
 import java.util.HashMap;

@@ -1,9 +1,10 @@
-package com.am.market_hub.market;
+package com.am.market_hub.market.repository;
 
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
+import com.am.market_hub.market.domain.CryptoQuote;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;

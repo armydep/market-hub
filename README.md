@@ -52,6 +52,10 @@ Each slice documents the variables it introduces in
 | `POLLER_INTERVAL_MS` | `180000` | Poll interval (ms) |
 | `POLLER_INITIAL_DELAY_MS` | `5000` | Delay before first poll (ms) |
 
+### API documentation (OpenAPI / Swagger)
+- Swagger UI: `http://localhost:8080/api/swagger-ui.html`
+- OpenAPI spec: `http://localhost:8080/api/v3/api-docs`
+
 ### Market endpoints (S1, public)
 - `GET /api/market/coins?sort=<field>&order=asc|desc` — cached universe, sorted
 - `GET /api/market/coins/{symbol}` — single coin (404 if absent)

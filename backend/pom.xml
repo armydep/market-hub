@@ -48,6 +48,13 @@
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
 
+		<!-- OpenAPI 3 spec + Swagger UI (3.x line targets Spring Boot 4 / Spring 7). -->
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+			<version>3.0.3</version>
+		</dependency>
+
 		<!-- Boot 4 split auto-configuration into per-feature modules; this one
 		     carries FlywayAutoConfiguration and pulls in flyway-core. -->
 		<dependency>

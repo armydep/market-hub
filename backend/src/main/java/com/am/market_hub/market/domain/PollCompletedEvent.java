@@ -1,4 +1,4 @@
-package com.am.market_hub.market;
+package com.am.market_hub.market.domain;
 
 /**
  * Published after a successful poll cycle upserts the universe. The seam for the

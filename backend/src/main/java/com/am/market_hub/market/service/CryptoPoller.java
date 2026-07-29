@@ -1,4 +1,4 @@
-package com.am.market_hub.market;
+package com.am.market_hub.market.service;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -6,6 +6,11 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import com.am.market_hub.market.domain.CryptoQuote;
+import com.am.market_hub.market.domain.PollCompletedEvent;
+import com.am.market_hub.market.provider.PriceProvider;
+import com.am.market_hub.market.provider.ProviderQuote;
+import com.am.market_hub.market.repository.CryptoQuoteRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;

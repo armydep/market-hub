@@ -27,9 +27,10 @@ Run from `backend/`:
 ## Conventions
 - Schema is Flyway-only (`db/migration/V__*.sql`); JPA `ddl-auto=validate` — never let Hibernate alter schema.
 - Constructor injection only; no field injection. DTOs are `record`s. Entities are not returned from controllers.
-- Package-by-feature under `com.am.market_hub`: `auth`, `user`, `market`, `board`, `alert`, plus `common`, `config`.
+- Package-by-feature under `com.am.market_hub`, layered inside each feature (`web`/`service`/`repository`/`domain`/`dto`); see the `spring-boot-backend` skill. Features: `auth`, `user`, `market`, `board`, `alert`, plus `common`, `config`.
 - All external price access goes through `PriceProvider`; only the poller touches it (never the read path).
 - Errors via `ApiException` + the single `GlobalExceptionHandler`; cross-user access returns 404.
+- API docs via springdoc (OpenAPI 3): spec at `/api/v3/api-docs`, Swagger UI at `/api/swagger-ui.html`; annotate controllers with `@Tag`/`@Operation`.
 - Auth’d ownership scoping through the `CurrentUser` helper on every board/alert operation.
 - RBAC: single `User.role` enum + `RoleHierarchy` (`ADMIN>MODERATOR>TRADER`); role is a JWT claim; admin seeded from env.
 - Tests use real Postgres (Testcontainers) and a stub `PriceProvider`; no live CMC calls in tests.

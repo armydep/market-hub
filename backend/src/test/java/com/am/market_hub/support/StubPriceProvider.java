@@ -3,8 +3,8 @@ package com.am.market_hub.support;
 import java.math.BigDecimal;
 import java.util.List;
 
-import com.am.market_hub.market.PriceProvider;
-import com.am.market_hub.market.ProviderQuote;
+import com.am.market_hub.market.provider.PriceProvider;
+import com.am.market_hub.market.provider.ProviderQuote;
 
 /** Deterministic in-memory provider so tests never call CoinMarketCap. */
 public class StubPriceProvider implements PriceProvider {

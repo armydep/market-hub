@@ -3,7 +3,7 @@ package com.am.market_hub.market.dto;
 import java.math.BigDecimal;
 import java.time.Instant;
 
-import com.am.market_hub.market.CryptoQuote;
+import com.am.market_hub.market.domain.CryptoQuote;
 
 /** Public representation of a cached quote (entities are never returned directly). */
 public record CoinResponse(

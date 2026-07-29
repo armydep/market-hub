@@ -1,4 +1,4 @@
-package com.am.market_hub.market;
+package com.am.market_hub.market.provider;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;

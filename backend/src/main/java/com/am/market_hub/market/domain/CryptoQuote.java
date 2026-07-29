@@ -1,7 +1,9 @@
-package com.am.market_hub.market;
+package com.am.market_hub.market.domain;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+
+import com.am.market_hub.market.provider.ProviderQuote;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

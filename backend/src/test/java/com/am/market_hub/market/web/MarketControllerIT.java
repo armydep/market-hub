@@ -1,4 +1,4 @@
-package com.am.market_hub.market;
+package com.am.market_hub.market.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -16,6 +16,8 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
 import com.am.market_hub.market.dto.CoinResponse;
+import com.am.market_hub.market.repository.CryptoQuoteRepository;
+import com.am.market_hub.market.service.CryptoPoller;
 import com.am.market_hub.support.StubPriceProvider;
 import com.am.market_hub.support.StubProviderConfig;
 import com.am.market_hub.support.TestcontainersConfig;

@@ -1,4 +1,4 @@
-package com.am.market_hub.market;
+package com.am.market_hub.market.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -11,6 +11,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
 
+import com.am.market_hub.market.domain.CryptoQuote;
+import com.am.market_hub.market.repository.CryptoQuoteRepository;
 import com.am.market_hub.support.StubPriceProvider;
 import com.am.market_hub.support.StubProviderConfig;
 import com.am.market_hub.support.TestcontainersConfig;

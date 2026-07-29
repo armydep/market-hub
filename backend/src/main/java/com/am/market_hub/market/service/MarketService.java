@@ -1,4 +1,4 @@
-package com.am.market_hub.market;
+package com.am.market_hub.market.service;
 
 import java.util.List;
 
@@ -7,8 +7,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import com.am.market_hub.common.ApiException;
+import com.am.market_hub.common.exception.ApiException;
+import com.am.market_hub.market.domain.CoinColumn;
 import com.am.market_hub.market.dto.CoinResponse;
+import com.am.market_hub.market.repository.CryptoQuoteRepository;
 
 @Service
 public class MarketService {
