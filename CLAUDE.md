@@ -20,9 +20,13 @@ SPA (out of scope here) is the client. Crypto-only, USD-only in Phase 1.
 Run from `backend/`:
 - Start Postgres: `docker compose up -d` (repo root).
 - Run app: `mvn spring-boot:run` (needs `CMC_API_KEY` for real data; boots empty without it).
-- Test: `mvn test` (Testcontainers spins up Postgres; Docker must be available).
+- Test command for the test-runner subagent: `mvn test` (Testcontainers spins up Postgres; Docker must be available).
 - Single test: `mvn -Dtest=ClassName#method test`.
 - Package: `mvn -DskipTests package`.
+
+## Workflow
+- Never run `./mvnw test` in the main session — delegate to the test-runner subagent.
+- Before pushing a completed slice, delegate to the code-reviewer subagent and resolve every CRITICAL finding.
 
 ## Conventions
 - Schema is Flyway-only (`db/migration/V__*.sql`); JPA `ddl-auto=validate` — never let Hibernate alter schema.
