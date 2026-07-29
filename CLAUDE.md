@@ -13,7 +13,7 @@ SPA (out of scope here) is the client. Crypto-only, USD-only in Phase 1.
 @docs/slices.md
 
 ## Layout
-- `backend/` — Spring Boot Maven module (package root `com.markethub`, package-by-feature).
+- `backend/` — Spring Boot Maven module (package root `com.am.market_hub`, package-by-feature).
 - `docker-compose.yml` — local Postgres 16.
 
 ## Build / test / run
@@ -27,7 +27,7 @@ Run from `backend/`:
 ## Conventions
 - Schema is Flyway-only (`db/migration/V__*.sql`); JPA `ddl-auto=validate` — never let Hibernate alter schema.
 - Constructor injection only; no field injection. DTOs are `record`s. Entities are not returned from controllers.
-- Package-by-feature: `auth`, `user`, `market`, `board`, `alert`, plus `common`, `config`.
+- Package-by-feature under `com.am.market_hub`: `auth`, `user`, `market`, `board`, `alert`, plus `common`, `config`.
 - All external price access goes through `PriceProvider`; only the poller touches it (never the read path).
 - Errors via `ApiException` + the single `GlobalExceptionHandler`; cross-user access returns 404.
 - Auth’d ownership scoping through the `CurrentUser` helper on every board/alert operation.

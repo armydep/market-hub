@@ -1,0 +1,4 @@
+-- Baseline migration for market-hub.
+-- Schema is owned by Flyway from here on; JPA runs with ddl-auto=validate.
+-- Feature tables (users, crypto_quotes, boards, board_exclusions, price_alerts)
+-- are introduced by their respective slice migrations (S1, S2, S3, S4).

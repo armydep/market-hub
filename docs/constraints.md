@@ -1,7 +1,7 @@
 # Constraints & Decisions
 
 ## Stack / versions
-- Java 21, Spring Boot 3.3.x, Maven (module root `backend/`).
+- Java 21, Spring Boot 4.1.x (Spring Framework 7 / Spring Security 7), Maven (module root `backend/`, groupId `com.am`, base package `com.am.market_hub`).
 - PostgreSQL 16. Schema owned by **Flyway**; JPA `ddl-auto=validate` (Hibernate never mutates schema).
 - Spring Security + JWT (`io.jsonwebtoken jjwt` 0.12.x). BCrypt password hashing.
 - HTTP client to the price provider: Spring `WebClient` (webflux on the classpath, app is otherwise MVC/servlet).
