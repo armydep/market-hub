@@ -40,6 +40,7 @@ Each slice documents the variables it introduces in
 
 | Variable | Default | Purpose |
 |---|---|---|
+| `DB_NAME` | `markethub` | Local Postgres database name |
 | `DB_URL` | `jdbc:postgresql://localhost:5432/markethub` | JDBC URL |
 | `DB_USERNAME` | `markethub` | Database user |
 | `DB_PASSWORD` | `markethub` | Database password |
