@@ -16,7 +16,12 @@ import com.am.market_hub.support.StubPriceProvider;
 import com.am.market_hub.support.StubProviderConfig;
 import com.am.market_hub.support.TestcontainersConfig;
 
-/** Scheduled poll entrypoint: verifies the scheduler-facing method has a transaction. */
+/**
+ * Scheduled poll entrypoint: pins the transaction boundary the poller-transaction
+ * fix established. The provider fetch must run with no transaction open (a
+ * hung HTTP call must never pin a DB connection); only the upsert is
+ * transactional.
+ */
 @SpringBootTest
 @Import({TestcontainersConfig.class, StubProviderConfig.class})
 @TestPropertySource(properties = {
@@ -39,7 +44,16 @@ class CryptoPollerSchedulingTest {
     }
 
     @Test
-    void scheduledPollRunsInsideTransaction() {
+    void providerFetchRunsWithNoTransactionOpen() {
+        stub.setQuotes(List.of(StubPriceProvider.quote(1, "BTC", 1, "60000")));
+
+        poller.scheduledPoll();
+
+        assertThat(stub.wasTransactionActiveDuringLastFetch()).isFalse();
+    }
+
+    @Test
+    void scheduledPollUpsertsThenUpdatesAndRemovesStale() {
         stub.setQuotes(List.of(
                 StubPriceProvider.quote(1, "BTC", 1, "60000"),
                 StubPriceProvider.quote(1027, "ETH", 2, "3000")));
