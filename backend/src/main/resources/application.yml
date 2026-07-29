@@ -28,6 +28,17 @@ management:
       exposure:
         include: health,info
 
+app:
+  coinmarketcap:
+    api-key: ${CMC_API_KEY:}
+    base-url: ${CMC_BASE_URL:https://pro-api.coinmarketcap.com}
+    convert: ${CMC_CONVERT:USD}
+  poller:
+    enabled: ${POLLER_ENABLED:true}
+    coin-limit: ${POLLER_COIN_LIMIT:100}
+    interval-ms: ${POLLER_INTERVAL_MS:180000}
+    initial-delay-ms: ${POLLER_INITIAL_DELAY_MS:5000}
+
 logging:
   level:
     com.am.market_hub: INFO

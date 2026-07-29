@@ -44,3 +44,18 @@ Each slice documents the variables it introduces in
 | `DB_USERNAME` | `markethub` | Database user |
 | `DB_PASSWORD` | `markethub` | Database password |
 | `SERVER_PORT` | `8080` | HTTP port (app serves under context path `/api`) |
+| `CMC_API_KEY` | *(empty)* | CoinMarketCap key; empty → empty universe, no crash |
+| `CMC_BASE_URL` | `https://pro-api.coinmarketcap.com` | CoinMarketCap base URL |
+| `CMC_CONVERT` | `USD` | Quote currency (Phase 1: USD only) |
+| `POLLER_ENABLED` | `true` | Enable the scheduled poller |
+| `POLLER_COIN_LIMIT` | `100` | Top-N coins fetched per cycle |
+| `POLLER_INTERVAL_MS` | `180000` | Poll interval (ms) |
+| `POLLER_INITIAL_DELAY_MS` | `5000` | Delay before first poll (ms) |
+
+### Market endpoints (S1, public)
+- `GET /api/market/coins?sort=<field>&order=asc|desc` — cached universe, sorted
+- `GET /api/market/coins/{symbol}` — single coin (404 if absent)
+
+Sortable fields: `symbol`, `name`, `marketCapRank` (default), `price`,
+`pctChange1h`, `pctChange24h`, `pctChange7d`, `marketCap`, `volume24h`,
+`circulatingSupply`.
