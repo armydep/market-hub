@@ -46,15 +46,5 @@
         ]
       }
     ]
-  },
-  "sandbox": {
-    "enabled": true,
-    "excludedCommands": ["docker"],
-    "network": {
-      "allowedDomains": [
-        "*.docker.io",
-        "*.docker.com"
-      ]
-    }
   }
 }
