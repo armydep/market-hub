@@ -19,6 +19,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.annotation.PostConstruct;
+
 /**
  * Scheduled, single-instance poller. Each cycle upserts the top-N universe from
  * the {@link PriceProvider} and drops coins that left it, then publishes
@@ -52,8 +54,19 @@ public class CryptoPoller {
         this.convert = convert;
     }
 
+    @PostConstruct
+    void logConfiguration() {
+        if (enabled) {
+            log.info("Crypto poller enabled: provider='{}', coinLimit={}, convert={}",
+                    provider.name(), coinLimit, convert);
+        } else {
+            log.info("Crypto poller disabled");
+        }
+    }
+
     @Scheduled(fixedDelayString = "${app.poller.interval-ms}",
             initialDelayString = "${app.poller.initial-delay-ms}")
+    @Transactional
     public void scheduledPoll() {
         if (enabled) {
             pollOnce();
