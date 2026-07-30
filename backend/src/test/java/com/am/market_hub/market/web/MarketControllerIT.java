@@ -75,6 +75,31 @@ class MarketControllerIT {
         return client.get().uri(uri).retrieve().body(CoinPageResponse.class);
     }
 
+    /**
+     * Search via a UriBuilder rather than a URI template. A raw template would
+     * re-encode the '%' in a term like "%25", so the server would receive the
+     * literal three-character string instead of the metacharacter under test —
+     * making the escaping assertions pass without ever exercising escaping.
+     */
+    private CoinPageResponse search(String q) {
+        return client.get()
+                .uri(b -> b.path("/market/coins").queryParam("q", q).build())
+                .retrieve().body(CoinPageResponse.class);
+    }
+
+    /** Distinct symbol/name pairs so name-matching and symbol-matching are separable. */
+    private void seedNamedCoins() {
+        repository.deleteAll();
+        stub.setQuotes(List.of(
+                new ProviderQuote(1, "BTC", "Bitcoin", "bitcoin", "CRYPTO", 1,
+                        new BigDecimal("60000"), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                        BigDecimal.TEN, BigDecimal.ONE, BigDecimal.ONE, "USD"),
+                new ProviderQuote(1027, "ETH", "Ethereum", "ethereum", "CRYPTO", 2,
+                        new BigDecimal("3000"), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                        BigDecimal.TEN, BigDecimal.ONE, BigDecimal.ONE, "USD")));
+        poller.pollOnce();
+    }
+
     private static void assertBadRequest(ThrowingCallable call) {
         assertThatThrownBy(call).isInstanceOfSatisfying(HttpClientErrorException.class,
                 ex -> assertThat(ex.getStatusCode().value()).isEqualTo(400));
@@ -178,27 +203,26 @@ class MarketControllerIT {
 
     @Test
     void searchesByNameSubstringCaseInsensitively() {
-        // Stub names are "<symbol>-name", so "1-NAME" matches C1, C10, C11, C12.
-        CoinPageResponse response = get("/market/coins?q=1-NAME");
-
-        assertThat(response.content()).extracting(CoinResponse::symbol)
-                .containsExactlyInAnyOrder("C1", "C10", "C11", "C12");
+        seedNamedCoins();
+        // "coin" occurs in the NAME Bitcoin and in no symbol, so a match can
+        // only have come from the name column.
+        assertThat(search("coin").content()).extracting(CoinResponse::symbol).containsExactly("BTC");
+        assertThat(search("COIN").content()).extracting(CoinResponse::symbol).containsExactly("BTC");
+        assertThat(search("ereum").content()).extracting(CoinResponse::symbol).containsExactly("ETH");
     }
 
     @Test
     void searchesBySymbolSubstringCaseInsensitively() {
-        CoinPageResponse lower = get("/market/coins?q=c1");
-        CoinPageResponse upper = get("/market/coins?q=C1");
-
-        assertThat(lower.content()).extracting(CoinResponse::symbol)
-                .containsExactlyInAnyOrder("C1", "C10", "C11", "C12");
-        assertThat(upper.content()).extracting(CoinResponse::symbol)
-                .containsExactlyElementsOf(lower.content().stream().map(CoinResponse::symbol).toList());
+        seedNamedCoins();
+        // "btc" occurs in the SYMBOL BTC and in no name, so a match can only
+        // have come from the symbol column.
+        assertThat(search("btc").content()).extracting(CoinResponse::symbol).containsExactly("BTC");
+        assertThat(search("BtC").content()).extracting(CoinResponse::symbol).containsExactly("BTC");
     }
 
     @Test
     void noMatchIsAnEmptyPageNotA404() {
-        CoinPageResponse response = get("/market/coins?q=doge");
+        CoinPageResponse response = search("doge");
 
         assertThat(response.content()).isEmpty();
         assertThat(response.totalElements()).isZero();
@@ -207,20 +231,28 @@ class MarketControllerIT {
 
     @Test
     void blankSearchRestoresTheFullDataset() {
-        assertThat(get("/market/coins?q=").totalElements()).isEqualTo(SEEDED_COINS);
-        assertThat(get("/market/coins?q=%20").totalElements()).isEqualTo(SEEDED_COINS);
+        assertThat(search("").totalElements()).isEqualTo(SEEDED_COINS);
+        assertThat(search("   ").totalElements()).isEqualTo(SEEDED_COINS);
     }
 
     @Test
     void likeMetacharactersAreTreatedLiterally() {
-        // Without escaping these would wildcard-match the entire universe.
-        assertThat(get("/market/coins?q=%25").totalElements()).isZero();
-        assertThat(get("/market/coins?q=_").totalElements()).isZero();
+        // Sent as real metacharacters (see search()); unescaped, '%' and '_'
+        // would wildcard-match the entire universe instead of matching nothing.
+        assertThat(search("%").totalElements()).isZero();
+        assertThat(search("_").totalElements()).isZero();
+        assertThat(search("C%").totalElements()).isZero();
     }
 
     @Test
     void searchAndSortComposeAcrossTheWholeMatchingSet() {
-        CoinPageResponse response = get("/market/coins?q=c1&sort=price&order=desc&size=5");
+        // q=c1 matches C1, C10, C11, C12 by symbol. Sorting by price descending
+        // must order that filtered set globally before the page is cut.
+        CoinPageResponse response = client.get()
+                .uri(b -> b.path("/market/coins").queryParam("q", "c1")
+                        .queryParam("sort", "price").queryParam("order", "desc")
+                        .queryParam("size", 5).build())
+                .retrieve().body(CoinPageResponse.class);
 
         assertThat(response.totalElements()).isEqualTo(4);
         assertThat(response.content()).extracting(CoinResponse::symbol)
