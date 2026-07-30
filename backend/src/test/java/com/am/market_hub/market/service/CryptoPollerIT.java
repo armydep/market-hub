@@ -8,8 +8,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import com.am.market_hub.market.domain.CryptoQuote;
 import com.am.market_hub.market.repository.CryptoQuoteRepository;
@@ -29,6 +31,10 @@ class CryptoPollerIT {
     private CryptoPoller poller;
     @Autowired
     private CryptoQuoteRepository repository;
+    @Autowired
+    private ApplicationEventPublisher events;
+    @Autowired
+    private PlatformTransactionManager transactionManager;
 
     @BeforeEach
     void clean() {
@@ -88,5 +94,31 @@ class CryptoPollerIT {
 
         assertThat(upserted).isZero();
         assertThat(repository.count()).isEqualTo(10); // full universe preserved, nothing wrongly delisted
+    }
+
+    @Test
+    void reproduceLoweredCoinLimitScenario() {
+        // Simulate an operator lowering POLLER_COIN_LIMIT after the universe has
+        // already grown to the old, larger size (e.g. for CMC-credit cost control).
+        stub.setQuotes(List.of(
+                StubPriceProvider.quote(1, "C1", 1, "1"), StubPriceProvider.quote(2, "C2", 2, "1"),
+                StubPriceProvider.quote(3, "C3", 3, "1"), StubPriceProvider.quote(4, "C4", 4, "1"),
+                StubPriceProvider.quote(5, "C5", 5, "1"), StubPriceProvider.quote(6, "C6", 6, "1"),
+                StubPriceProvider.quote(7, "C7", 7, "1"), StubPriceProvider.quote(8, "C8", 8, "1"),
+                StubPriceProvider.quote(9, "C9", 9, "1"), StubPriceProvider.quote(10, "C10", 10, "1")));
+        poller.pollOnce();
+        assertThat(repository.count()).isEqualTo(10);
+
+        // A second poller, standing in for the app restarted with a lower configured
+        // limit. The "provider" now legitimately only returns the new smaller top-N.
+        CryptoPoller lowerLimitPoller = new CryptoPoller(stub, repository, events, transactionManager,
+                true, 2, "USD");
+        stub.setQuotes(List.of(StubPriceProvider.quote(1, "C1", 1, "1"), StubPriceProvider.quote(2, "C2", 2, "1")));
+
+        lowerLimitPoller.pollOnce();
+        lowerLimitPoller.pollOnce();
+        lowerLimitPoller.pollOnce();
+
+        assertThat(repository.count()).isEqualTo(2);
     }
 }

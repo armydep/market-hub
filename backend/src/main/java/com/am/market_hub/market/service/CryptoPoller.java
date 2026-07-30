@@ -92,11 +92,15 @@ public class CryptoPoller {
             return 0;
         }
 
-        long currentSize = repository.count();
-        if (currentSize > 0 && quotes.size() * 2L < currentSize) {
-            log.warn("Provider '{}' returned only {} coins, well below the current universe size ({}); "
+        // Bounded by coinLimit as well as the current count: otherwise a lowered
+        // POLLER_COIN_LIMIT (the universe legitimately shrinking on its own) would
+        // permanently read as "partial" against the old, larger count forever,
+        // since a skipped cycle never lets the count catch up to the new limit.
+        long expectedSize = Math.min(repository.count(), coinLimit);
+        if (expectedSize > 0 && quotes.size() * 2L < expectedSize) {
+            log.warn("Provider '{}' returned only {} coins, well below the expected universe size ({}); "
                             + "skipping cycle rather than treating the rest as delisted (possible partial failure)",
-                    provider.name(), quotes.size(), currentSize);
+                    provider.name(), quotes.size(), expectedSize);
             return 0;
         }
 
