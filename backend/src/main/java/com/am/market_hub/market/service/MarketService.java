@@ -40,7 +40,7 @@ public class MarketService {
 
     @Transactional(readOnly = true)
     public CoinResponse getBySymbol(String symbol) {
-        return repository.findBySymbolIgnoreCase(symbol)
+        return repository.findFirstBySymbolIgnoreCaseOrderByMarketCapRankAsc(symbol)
                 .map(CoinResponse::from)
                 .orElseThrow(() -> ApiException.notFound("Unknown symbol: " + symbol));
     }

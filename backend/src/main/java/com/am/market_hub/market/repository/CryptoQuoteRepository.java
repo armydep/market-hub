@@ -12,7 +12,14 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface CryptoQuoteRepository extends JpaRepository<CryptoQuote, Integer> {
 
-    Optional<CryptoQuote> findBySymbolIgnoreCase(String symbol);
+    /**
+     * Symbol is not enforced unique at the DB level (only indexed) - CMC can
+     * return duplicate tickers once the tracked universe grows past the very
+     * top of the market. Pick the highest-ranked match deterministically
+     * rather than risk IncorrectResultSizeDataAccessException on a plain
+     * findBy that assumes at most one row.
+     */
+    Optional<CryptoQuote> findFirstBySymbolIgnoreCaseOrderByMarketCapRankAsc(String symbol);
 
     List<CryptoQuote> findAllBy(Sort sort);
 

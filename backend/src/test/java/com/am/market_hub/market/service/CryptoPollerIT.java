@@ -45,7 +45,7 @@ class CryptoPollerIT {
 
         assertThat(inserted).isEqualTo(2);
         assertThat(repository.count()).isEqualTo(2);
-        assertThat(repository.findBySymbolIgnoreCase("BTC")).get()
+        assertThat(repository.findFirstBySymbolIgnoreCaseOrderByMarketCapRankAsc("BTC")).get()
                 .extracting(CryptoQuote::getPrice).satisfies(p -> assertThat(p).isEqualByComparingTo("60000"));
 
         // BTC price changes (update path); ETH leaves the top-N (stale removal).
@@ -54,9 +54,9 @@ class CryptoPollerIT {
         poller.pollOnce();
 
         assertThat(repository.count()).isEqualTo(1);
-        assertThat(repository.findBySymbolIgnoreCase("BTC")).get()
+        assertThat(repository.findFirstBySymbolIgnoreCaseOrderByMarketCapRankAsc("BTC")).get()
                 .extracting(CryptoQuote::getPrice).satisfies(p -> assertThat(p).isEqualByComparingTo("61000"));
-        assertThat(repository.findBySymbolIgnoreCase("ETH")).isEmpty();
+        assertThat(repository.findFirstBySymbolIgnoreCaseOrderByMarketCapRankAsc("ETH")).isEmpty();
     }
 
     @Test
