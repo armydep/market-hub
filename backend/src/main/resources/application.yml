@@ -38,6 +38,12 @@ app:
     coin-limit: ${POLLER_COIN_LIMIT:100}
     interval-ms: ${POLLER_INTERVAL_MS:180000}
     initial-delay-ms: ${POLLER_INITIAL_DELAY_MS:5000}
+  market:
+    # PRD 7.3 requires these to be configuration rather than constants.
+    # Validated against the CoinColumn catalog at startup.
+    default-page-size: ${MARKET_DEFAULT_PAGE_SIZE:20}
+    supported-page-sizes: ${MARKET_SUPPORTED_PAGE_SIZES:20,50,100}
+    default-visible-columns: ${MARKET_DEFAULT_VISIBLE_COLUMNS:marketCapRank,name,symbol,price,pctChange1h,pctChange24h,pctChange7d,marketCap,volume24h,circulatingSupply}
 
 logging:
   level:
