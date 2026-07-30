@@ -17,7 +17,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import jakarta.annotation.PostConstruct;
 
@@ -36,6 +37,7 @@ public class CryptoPoller {
     private final PriceProvider provider;
     private final CryptoQuoteRepository repository;
     private final ApplicationEventPublisher events;
+    private final TransactionTemplate transactionTemplate;
     private final boolean enabled;
     private final int coinLimit;
     private final String convert;
@@ -43,12 +45,14 @@ public class CryptoPoller {
     public CryptoPoller(PriceProvider provider,
                         CryptoQuoteRepository repository,
                         ApplicationEventPublisher events,
+                        PlatformTransactionManager transactionManager,
                         @Value("${app.poller.enabled}") boolean enabled,
                         @Value("${app.poller.coin-limit}") int coinLimit,
                         @Value("${app.coinmarketcap.convert}") String convert) {
         this.provider = provider;
         this.repository = repository;
         this.events = events;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.enabled = enabled;
         this.coinLimit = coinLimit;
         this.convert = convert;
@@ -66,7 +70,6 @@ public class CryptoPoller {
 
     @Scheduled(fixedDelayString = "${app.poller.interval-ms}",
             initialDelayString = "${app.poller.initial-delay-ms}")
-    @Transactional
     public void scheduledPoll() {
         if (enabled) {
             pollOnce();
@@ -75,9 +78,10 @@ public class CryptoPoller {
 
     /**
      * Run one poll cycle. Returns the number of coins upserted (0 when the
-     * provider had no data and the cycle was skipped).
+     * provider had no data and the cycle was skipped). The provider fetch runs
+     * outside any transaction — a slow or hung HTTP call must never hold a DB
+     * connection open — only the upsert itself is transactional.
      */
-    @Transactional
     public int pollOnce() {
         List<ProviderQuote> quotes = provider.fetchTopCoins(coinLimit, convert);
         if (quotes.isEmpty()) {
@@ -85,6 +89,12 @@ public class CryptoPoller {
             return 0;
         }
 
+        int upserted = transactionTemplate.execute(status -> upsertUniverse(quotes));
+        events.publishEvent(new PollCompletedEvent(upserted));
+        return upserted;
+    }
+
+    private int upsertUniverse(List<ProviderQuote> quotes) {
         List<Integer> ids = quotes.stream().map(ProviderQuote::cmcId).toList();
         Map<Integer, CryptoQuote> existing = repository.findAllById(ids).stream()
                 .collect(Collectors.toMap(CryptoQuote::getCmcId, Function.identity()));
@@ -103,7 +113,6 @@ public class CryptoPoller {
         int removed = repository.deleteByCmcIdNotIn(ids);
 
         log.info("Poll complete: {} coins upserted, {} stale removed", toSave.size(), removed);
-        events.publishEvent(new PollCompletedEvent(toSave.size()));
         return toSave.size();
     }
 }

@@ -3,6 +3,7 @@ package com.am.market_hub.market.web;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -16,6 +17,7 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
 import com.am.market_hub.market.dto.CoinResponse;
+import com.am.market_hub.market.provider.ProviderQuote;
 import com.am.market_hub.market.repository.CryptoQuoteRepository;
 import com.am.market_hub.market.service.CryptoPoller;
 import com.am.market_hub.support.StubPriceProvider;
@@ -80,6 +82,22 @@ class MarketControllerIT {
                 .retrieve().body(CoinResponse.class))
                 .isInstanceOfSatisfying(HttpClientErrorException.class,
                         ex -> assertThat(ex.getStatusCode().value()).isEqualTo(404));
+    }
+
+    @Test
+    void descendingSortPlacesNullValueLastNotFirst() {
+        repository.deleteAll();
+        stub.setQuotes(List.of(
+                StubPriceProvider.quote(1, "BTC", 1, "60000"),
+                new ProviderQuote(99, "NEW", "New Coin", "new-coin", "CRYPTO", 3, null,
+                        BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                        BigDecimal.TEN, BigDecimal.ONE, BigDecimal.ONE, "USD")));
+        poller.pollOnce();
+
+        CoinResponse[] coins = client.get().uri("/market/coins?sort=price&order=desc")
+                .retrieve().body(CoinResponse[].class);
+
+        assertThat(coins).extracting(CoinResponse::symbol).containsExactly("BTC", "NEW");
     }
 
     @Test

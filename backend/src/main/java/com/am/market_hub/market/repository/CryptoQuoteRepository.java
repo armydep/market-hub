@@ -9,7 +9,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.transaction.annotation.Transactional;
 
 public interface CryptoQuoteRepository extends JpaRepository<CryptoQuote, Integer> {
 
@@ -17,8 +16,11 @@ public interface CryptoQuoteRepository extends JpaRepository<CryptoQuote, Intege
 
     List<CryptoQuote> findAllBy(Sort sort);
 
-    /** Drop coins that are no longer in the freshly-fetched universe. */
-    @Transactional
+    /**
+     * Drop coins that are no longer in the freshly-fetched universe. Relies on
+     * the caller (CryptoPoller's upsert transaction) providing the active
+     * transaction this modifying query requires.
+     */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("delete from CryptoQuote q where q.cmcId not in :cmcIds")
     int deleteByCmcIdNotIn(Collection<Integer> cmcIds);

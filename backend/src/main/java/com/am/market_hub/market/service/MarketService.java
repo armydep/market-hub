@@ -29,7 +29,11 @@ public class MarketService {
         CoinColumn.byKey(field)
                 .orElseThrow(() -> ApiException.badRequest("Unknown sort field: " + field));
         Sort.Direction direction = parseDirection(order);
-        return repository.findAllBy(Sort.by(direction, field)).stream()
+        // Postgres's default null placement flips with direction (NULLS LAST on
+        // ASC, NULLS FIRST on DESC); pin nulls last regardless so a coin missing
+        // a value never jumps to the top of a descending sort.
+        Sort resolvedSort = Sort.by(new Sort.Order(direction, field).nullsLast());
+        return repository.findAllBy(resolvedSort).stream()
                 .map(CoinResponse::from)
                 .toList();
     }
