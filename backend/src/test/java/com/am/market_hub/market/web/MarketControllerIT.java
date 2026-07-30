@@ -116,6 +116,16 @@ class MarketControllerIT {
     }
 
     @Test
+    void emptyUniverseReturnsEmptyListNotAnError() {
+        repository.deleteAll();
+
+        CoinResponse[] coins = client.get().uri("/market/coins")
+                .retrieve().body(CoinResponse[].class);
+
+        assertThat(coins).isEmpty();
+    }
+
+    @Test
     void invalidSortFieldReturns400() {
         assertThatThrownBy(() -> client.get().uri("/market/coins?sort=bogus")
                 .retrieve().body(CoinResponse[].class))

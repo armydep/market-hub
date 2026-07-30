@@ -51,4 +51,14 @@ class CoinMarketCapProviderTest {
 
         assertThat(provider.fetchTopCoins(100, "USD")).isEmpty();
     }
+
+    @Test
+    void transientFetchFailureDegradesToEmpty() {
+        // Nothing listens on this port, so the call fails fast (connection
+        // refused) without needing network egress or a mock server.
+        CoinMarketCapProvider provider = new CoinMarketCapProvider(
+                WebClient.create("http://127.0.0.1:1"), "some-key");
+
+        assertThat(provider.fetchTopCoins(100, "USD")).isEmpty();
+    }
 }
