@@ -64,7 +64,7 @@ class CryptoPollerSchedulingTest {
         poller.scheduledPoll();
 
         assertThat(repository.count()).isEqualTo(1);
-        assertThat(repository.findBySymbolIgnoreCase("BTC")).isPresent();
-        assertThat(repository.findBySymbolIgnoreCase("ETH")).isEmpty();
+        assertThat(repository.findFirstBySymbolIgnoreCaseOrderByMarketCapRankAsc("BTC")).isPresent();
+        assertThat(repository.findFirstBySymbolIgnoreCaseOrderByMarketCapRankAsc("ETH")).isEmpty();
     }
 }

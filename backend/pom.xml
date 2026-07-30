@@ -111,6 +111,17 @@
 						<include>**/*Tests.java</include>
 						<include>**/*IT.java</include>
 					</includes>
+					<!-- Safety net so no test can reach live CoinMarketCap: this overrides
+					     an OS-level CMC_API_KEY a developer/CI shell happens to have
+					     exported (system properties outrank env vars in Spring's property
+					     precedence), while any test's own @TestPropertySource - which
+					     outranks system properties - still wins, so tests that
+					     deliberately enable the poller (e.g. CryptoPollerSchedulingTest)
+					     are unaffected. -->
+					<systemPropertyVariables>
+						<app.poller.enabled>false</app.poller.enabled>
+						<app.coinmarketcap.api-key></app.coinmarketcap.api-key>
+					</systemPropertyVariables>
 				</configuration>
 			</plugin>
 		</plugins>

@@ -101,6 +101,31 @@ class MarketControllerIT {
     }
 
     @Test
+    void getBySymbolPicksHighestRankedWhenSymbolIsDuplicated() {
+        repository.deleteAll();
+        stub.setQuotes(List.of(
+                StubPriceProvider.quote(1, "BTC", 5, "1"),
+                StubPriceProvider.quote(2, "BTC", 1, "2")));
+        poller.pollOnce();
+
+        CoinResponse btc = client.get().uri("/market/coins/BTC")
+                .retrieve().body(CoinResponse.class);
+
+        assertThat(btc.cmcId()).isEqualTo(2);
+        assertThat(btc.marketCapRank()).isEqualTo(1);
+    }
+
+    @Test
+    void emptyUniverseReturnsEmptyListNotAnError() {
+        repository.deleteAll();
+
+        CoinResponse[] coins = client.get().uri("/market/coins")
+                .retrieve().body(CoinResponse[].class);
+
+        assertThat(coins).isEmpty();
+    }
+
+    @Test
     void invalidSortFieldReturns400() {
         assertThatThrownBy(() -> client.get().uri("/market/coins?sort=bogus")
                 .retrieve().body(CoinResponse[].class))
