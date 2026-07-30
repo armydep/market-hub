@@ -53,15 +53,27 @@ Each slice documents the variables it introduces in
 | `POLLER_COIN_LIMIT` | `100` | Top-N coins fetched per cycle |
 | `POLLER_INTERVAL_MS` | `180000` | Poll interval (ms) |
 | `POLLER_INITIAL_DELAY_MS` | `5000` | Delay before first poll (ms) |
+| `MARKET_DEFAULT_PAGE_SIZE` | `20` | Default dashboard page size (must be in the supported list) |
+| `MARKET_SUPPORTED_PAGE_SIZES` | `20,50,100` | Selectable page sizes; any other `size` → 400 |
+| `MARKET_DEFAULT_VISIBLE_COLUMNS` | *(all 10 columns)* | Default visible columns; validated against the column catalog at startup |
 
 ### API documentation (OpenAPI / Swagger)
 - Swagger UI: `http://localhost:8080/api/swagger-ui.html`
 - OpenAPI spec: `http://localhost:8080/api/v3/api-docs`
 
-### Market endpoints (S1, public)
-- `GET /api/market/coins?sort=<field>&order=asc|desc` — cached universe, sorted
+### Market endpoints (S1–S2, public)
+- `GET /api/market/coins?page=&size=&sort=<field>&order=asc|desc&q=<term>` — cached
+  universe as a page envelope (`content`, `page`, `size`, `totalElements`,
+  `totalPages`, `lastUpdatedAt`)
 - `GET /api/market/coins/{symbol}` — single coin (404 if absent)
+- `GET /api/market/columns` — supported columns, default visible set, and
+  selectable page sizes
 
 Sortable fields: `symbol`, `name`, `marketCapRank` (default), `price`,
 `pctChange1h`, `pctChange24h`, `pctChange7d`, `marketCap`, `volume24h`,
 `circulatingSupply`.
+
+`q` matches a **name or symbol substring**, case-insensitively. Sorting and
+searching apply to the complete matching dataset *before* pagination. An
+unsupported `size`, a negative `page`, or an unknown `sort`/`order` is a `400`;
+a search with no matches is a `200` with an empty page.

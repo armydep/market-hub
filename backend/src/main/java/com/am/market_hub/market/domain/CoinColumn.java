@@ -9,8 +9,10 @@ import java.util.stream.Collectors;
 /**
  * Server-defined column catalog: the quote fields exposed to the UI and usable
  * for sorting. In Phase 1 the column key equals the JPA property name, so it can
- * be used directly as a Spring Data {@code Sort} property. Reused by S3 to
- * validate board {@code columnsJson} / {@code sortField}.
+ * be used directly as a Spring Data {@code Sort} property.
+ *
+ * <p>Published to clients by {@code GET /api/market/columns} (S2) and reused by
+ * S8 to validate a registered user's persisted visible-column selection.
  */
 public enum CoinColumn {
 

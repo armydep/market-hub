@@ -3,9 +3,17 @@ package com.am.market_hub.market.web;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import static org.assertj.core.api.Assertions.within;
+
 import java.math.BigDecimal;
+import java.sql.Timestamp;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,7 +24,12 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
+import org.springframework.jdbc.core.JdbcTemplate;
+
+import com.am.market_hub.market.domain.CryptoQuote;
+import com.am.market_hub.market.dto.CoinPageResponse;
 import com.am.market_hub.market.dto.CoinResponse;
+import com.am.market_hub.market.dto.ColumnCatalogResponse;
 import com.am.market_hub.market.provider.ProviderQuote;
 import com.am.market_hub.market.repository.CryptoQuoteRepository;
 import com.am.market_hub.market.service.CryptoPoller;
@@ -24,11 +37,28 @@ import com.am.market_hub.support.StubPriceProvider;
 import com.am.market_hub.support.StubProviderConfig;
 import com.am.market_hub.support.TestcontainersConfig;
 
-/** Public read API: sort ordering, symbol lookup, and error contracts. */
+/**
+ * Public read API: pagination, search, sort ordering, column catalog, and error
+ * contracts.
+ *
+ * <p>The default fixture seeds more coins than fit on one page on purpose — a
+ * single-page fixture would let a sort-within-the-page bug pass while still
+ * violating F001-FR-011.
+ */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import({TestcontainersConfig.class, StubProviderConfig.class})
-@TestPropertySource(properties = "app.poller.enabled=false")
+@TestPropertySource(properties = {
+        "app.poller.enabled=false",
+        // Deliberately non-default values: the catalog assertions can only pass
+        // if the endpoint actually reads configuration rather than hardcoding.
+        // 2 and 5 exist so pagination can cut a page against the 12-coin fixture.
+        "app.market.supported-page-sizes=2,5,20,50,100",
+        "app.market.default-page-size=20",
+        "app.market.default-visible-columns=marketCapRank,name,symbol,price"
+})
 class MarketControllerIT {
+
+    private static final int SEEDED_COINS = 12;
 
     @LocalServerPort
     private int port;
@@ -38,50 +68,135 @@ class MarketControllerIT {
     private CryptoPoller poller;
     @Autowired
     private CryptoQuoteRepository repository;
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     private RestClient client;
 
     @BeforeEach
     void seed() {
         repository.deleteAll();
-        stub.setQuotes(List.of(
-                StubPriceProvider.quote(1, "BTC", 1, "60000"),
-                StubPriceProvider.quote(1027, "ETH", 2, "3000")));
+        // Rank n has price n; coin 1 is the cheapest, coin 12 the priciest.
+        List<ProviderQuote> quotes = new ArrayList<>();
+        for (int i = 1; i <= SEEDED_COINS; i++) {
+            quotes.add(StubPriceProvider.quote(i, "C" + i, i, String.valueOf(i)));
+        }
+        stub.setQuotes(quotes);
         poller.pollOnce();
         client = RestClient.create("http://localhost:" + port + "/api");
     }
 
-    @Test
-    void listsSortedByPriceDescending() {
-        CoinResponse[] coins = client.get().uri("/market/coins?sort=price&order=desc")
-                .retrieve().body(CoinResponse[].class);
+    private CoinPageResponse get(String uri) {
+        return client.get().uri(uri).retrieve().body(CoinPageResponse.class);
+    }
 
-        assertThat(coins).extracting(CoinResponse::symbol).containsExactly("BTC", "ETH");
+    /**
+     * Search via a UriBuilder rather than a URI template. A raw template would
+     * re-encode the '%' in a term like "%25", so the server would receive the
+     * literal three-character string instead of the metacharacter under test —
+     * making the escaping assertions pass without ever exercising escaping.
+     */
+    private CoinPageResponse search(String q) {
+        return client.get()
+                .uri(b -> b.path("/market/coins").queryParam("q", q).build())
+                .retrieve().body(CoinPageResponse.class);
+    }
+
+    /** Distinct symbol/name pairs so name-matching and symbol-matching are separable. */
+    private void seedNamedCoins() {
+        repository.deleteAll();
+        stub.setQuotes(List.of(
+                new ProviderQuote(1, "BTC", "Bitcoin", "bitcoin", "CRYPTO", 1,
+                        new BigDecimal("60000"), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                        BigDecimal.TEN, BigDecimal.ONE, BigDecimal.ONE, "USD"),
+                new ProviderQuote(1027, "ETH", "Ethereum", "ethereum", "CRYPTO", 2,
+                        new BigDecimal("3000"), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                        BigDecimal.TEN, BigDecimal.ONE, BigDecimal.ONE, "USD")));
+        poller.pollOnce();
+    }
+
+    private static void assertBadRequest(ThrowingCallable call) {
+        assertThatThrownBy(call).isInstanceOfSatisfying(HttpClientErrorException.class,
+                ex -> assertThat(ex.getStatusCode().value()).isEqualTo(400));
+    }
+
+    // --- pagination -------------------------------------------------------
+
+    @Test
+    void defaultsToFirstPageOfTwenty() {
+        CoinPageResponse response = get("/market/coins");
+
+        assertThat(response.page()).isZero();
+        assertThat(response.size()).isEqualTo(20);
+        assertThat(response.totalElements()).isEqualTo(SEEDED_COINS);
+        assertThat(response.totalPages()).isEqualTo(1);
+        assertThat(response.content()).hasSize(SEEDED_COINS);
+    }
+
+    @Test
+    void pagesDoNotOverlapAndCoverTheDataset() {
+        CoinPageResponse first = get("/market/coins?size=5&page=0");
+        CoinPageResponse second = get("/market/coins?size=5&page=1");
+        CoinPageResponse third = get("/market/coins?size=5&page=2");
+
+        assertThat(first.content()).hasSize(5);
+        assertThat(second.content()).hasSize(5);
+        assertThat(third.content()).hasSize(2);
+        assertThat(first.totalPages()).isEqualTo(3);
+        assertThat(first.totalElements()).isEqualTo(SEEDED_COINS);
+
+        List<String> all = new ArrayList<>();
+        first.content().forEach(c -> all.add(c.symbol()));
+        second.content().forEach(c -> all.add(c.symbol()));
+        third.content().forEach(c -> all.add(c.symbol()));
+        assertThat(all).doesNotHaveDuplicates().hasSize(SEEDED_COINS);
+    }
+
+    @Test
+    void pageBeyondTheEndIsEmptyNotAnError() {
+        CoinPageResponse response = get("/market/coins?size=5&page=99");
+
+        assertThat(response.content()).isEmpty();
+        assertThat(response.totalElements()).isEqualTo(SEEDED_COINS);
+        assertThat(response.totalPages()).isEqualTo(3);
+    }
+
+    @Test
+    void supportedPageSizesAreAccepted() {
+        assertThat(get("/market/coins?size=50").size()).isEqualTo(50);
+        assertThat(get("/market/coins?size=100").size()).isEqualTo(100);
+    }
+
+    @Test
+    void unsupportedPageSizeReturns400() {
+        assertBadRequest(() -> get("/market/coins?size=25"));
+        assertBadRequest(() -> get("/market/coins?size=0"));
+        assertBadRequest(() -> get("/market/coins?size=-1"));
+    }
+
+    @Test
+    void negativePageReturns400() {
+        assertBadRequest(() -> get("/market/coins?page=-1"));
+    }
+
+    // --- sort applies before pagination (F001-FR-011) ---------------------
+
+    @Test
+    void sortAppliesAcrossWholeDatasetNotJustThePage() {
+        // C12 is the globally priciest coin but sorts last by rank, so it only
+        // reaches page 0 if the sort ran before the page was cut.
+        CoinPageResponse response = get("/market/coins?sort=price&order=desc&size=5&page=0");
+
+        assertThat(response.content()).extracting(CoinResponse::symbol)
+                .containsExactly("C12", "C11", "C10", "C9", "C8");
     }
 
     @Test
     void defaultSortIsByMarketCapRankAscending() {
-        CoinResponse[] coins = client.get().uri("/market/coins")
-                .retrieve().body(CoinResponse[].class);
+        CoinPageResponse response = get("/market/coins?size=5");
 
-        assertThat(coins).extracting(CoinResponse::symbol).containsExactly("BTC", "ETH");
-    }
-
-    @Test
-    void getBySymbolIsCaseInsensitive() {
-        CoinResponse eth = client.get().uri("/market/coins/eth")
-                .retrieve().body(CoinResponse.class);
-
-        assertThat(eth.symbol()).isEqualTo("ETH");
-        assertThat(eth.marketCapRank()).isEqualTo(2);
-    }
-
-    @Test
-    void unknownSymbolReturns404() {
-        assertThatThrownBy(() -> client.get().uri("/market/coins/DOGE")
-                .retrieve().body(CoinResponse.class))
-                .isInstanceOfSatisfying(HttpClientErrorException.class,
-                        ex -> assertThat(ex.getStatusCode().value()).isEqualTo(404));
+        assertThat(response.content()).extracting(CoinResponse::symbol)
+                .containsExactly("C1", "C2", "C3", "C4", "C5");
     }
 
     @Test
@@ -94,10 +209,149 @@ class MarketControllerIT {
                         BigDecimal.TEN, BigDecimal.ONE, BigDecimal.ONE, "USD")));
         poller.pollOnce();
 
-        CoinResponse[] coins = client.get().uri("/market/coins?sort=price&order=desc")
-                .retrieve().body(CoinResponse[].class);
+        assertThat(get("/market/coins?sort=price&order=desc").content())
+                .extracting(CoinResponse::symbol).containsExactly("BTC", "NEW");
+        // The AC covers both directions; ascending relies on Postgres's default
+        // but the explicit nullsLast() must not regress it either.
+        assertThat(get("/market/coins?sort=price&order=asc").content())
+                .extracting(CoinResponse::symbol).containsExactly("BTC", "NEW");
+    }
 
-        assertThat(coins).extracting(CoinResponse::symbol).containsExactly("BTC", "NEW");
+    @Test
+    void invalidSortFieldOrOrderReturns400() {
+        assertBadRequest(() -> get("/market/coins?sort=bogus"));
+        assertBadRequest(() -> get("/market/coins?order=sideways"));
+    }
+
+    // --- search (F-002) ---------------------------------------------------
+
+    @Test
+    void searchesByNameSubstringCaseInsensitively() {
+        seedNamedCoins();
+        // "coin" occurs in the NAME Bitcoin and in no symbol, so a match can
+        // only have come from the name column.
+        assertThat(search("coin").content()).extracting(CoinResponse::symbol).containsExactly("BTC");
+        assertThat(search("COIN").content()).extracting(CoinResponse::symbol).containsExactly("BTC");
+        assertThat(search("ereum").content()).extracting(CoinResponse::symbol).containsExactly("ETH");
+    }
+
+    @Test
+    void searchesBySymbolSubstringCaseInsensitively() {
+        seedNamedCoins();
+        // "btc" occurs in the SYMBOL BTC and in no name, so a match can only
+        // have come from the symbol column.
+        assertThat(search("btc").content()).extracting(CoinResponse::symbol).containsExactly("BTC");
+        assertThat(search("BtC").content()).extracting(CoinResponse::symbol).containsExactly("BTC");
+    }
+
+    @Test
+    void noMatchIsAnEmptyPageNotA404() {
+        CoinPageResponse response = search("doge");
+
+        assertThat(response.content()).isEmpty();
+        assertThat(response.totalElements()).isZero();
+        assertThat(response.totalPages()).isZero();
+    }
+
+    @Test
+    void blankSearchRestoresTheFullDataset() {
+        assertThat(search("").totalElements()).isEqualTo(SEEDED_COINS);
+        assertThat(search("   ").totalElements()).isEqualTo(SEEDED_COINS);
+    }
+
+    @Test
+    void likeMetacharactersAreTreatedLiterally() {
+        // Sent as real metacharacters (see search()); unescaped, '%' and '_'
+        // would wildcard-match the entire universe instead of matching nothing.
+        assertThat(search("%").totalElements()).isZero();
+        assertThat(search("_").totalElements()).isZero();
+        assertThat(search("C%").totalElements()).isZero();
+    }
+
+    @Test
+    void searchAndSortComposeAcrossTheWholeMatchingSet() {
+        // q=c1 matches C1, C10, C11, C12 by symbol. size=2 forces a real page cut,
+        // so page 0 can only be [C12, C11] if the filtered set was sorted globally
+        // *before* being paginated.
+        CoinPageResponse response = client.get()
+                .uri(b -> b.path("/market/coins").queryParam("q", "c1")
+                        .queryParam("sort", "price").queryParam("order", "desc")
+                        .queryParam("size", 2).build())
+                .retrieve().body(CoinPageResponse.class);
+
+        assertThat(response.totalElements()).isEqualTo(4);
+        assertThat(response.totalPages()).isEqualTo(2);
+        assertThat(response.content()).extracting(CoinResponse::symbol).containsExactly("C12", "C11");
+    }
+
+    // --- column catalog ---------------------------------------------------
+
+    @Test
+    void columnCatalogExposesSupportedAndDefaultSets() {
+        ColumnCatalogResponse catalog = client.get().uri("/market/columns")
+                .retrieve().body(ColumnCatalogResponse.class);
+
+        assertThat(catalog.supported()).containsExactlyInAnyOrder(
+                "symbol", "name", "marketCapRank", "price", "pctChange1h", "pctChange24h",
+                "pctChange7d", "marketCap", "volume24h", "circulatingSupply");
+        // containsExactly, in order, against the values pinned in @TestPropertySource:
+        // a hardcoded or ignored configuration cannot satisfy these.
+        assertThat(catalog.defaultVisible())
+                .containsExactly("marketCapRank", "name", "symbol", "price");
+        assertThat(catalog.supportedPageSizes()).containsExactly(2, 5, 20, 50, 100);
+        assertThat(catalog.defaultPageSize()).isEqualTo(20);
+        assertThat(catalog.supported()).containsAll(catalog.defaultVisible());
+    }
+
+    // --- freshness (F001-FR-019) -----------------------------------------
+
+    @Test
+    void lastUpdatedAtIsTheNewestTimestampNotTheOldest() {
+        // Comparing the response against repository.findLastUpdatedAt() would be
+        // a tautology - it's the very call the endpoint makes, so it would pass
+        // just as happily with max() changed to min(). Backdate one row instead
+        // so newest and oldest are genuinely different values.
+        List<CryptoQuote> quotes = repository.findAll();
+        assertThat(quotes).hasSizeGreaterThan(1);
+        Instant newest = quotes.stream().map(CryptoQuote::getUpdatedAt).max(Instant::compareTo).orElseThrow();
+        Instant backdated = newest.minus(Duration.ofDays(7));
+        jdbcTemplate.update("update crypto_quotes set updated_at = ? where cmc_id = ?",
+                Timestamp.from(backdated), quotes.get(0).getCmcId());
+
+        CoinPageResponse response = get("/market/coins");
+
+        assertThat(response.lastUpdatedAt()).isNotNull();
+        assertThat(response.lastUpdatedAt()).isCloseTo(newest, within(1, ChronoUnit.MILLIS));
+        assertThat(response.lastUpdatedAt()).isAfter(backdated);
+    }
+
+    @Test
+    void lastUpdatedAtIsNullWhenUniverseIsEmpty() {
+        repository.deleteAll();
+
+        CoinPageResponse response = get("/market/coins");
+
+        assertThat(response.content()).isEmpty();
+        assertThat(response.lastUpdatedAt()).isNull();
+    }
+
+    // --- detail endpoint (unchanged by this slice) ------------------------
+
+    @Test
+    void getBySymbolIsCaseInsensitive() {
+        CoinResponse coin = client.get().uri("/market/coins/c2")
+                .retrieve().body(CoinResponse.class);
+
+        assertThat(coin.symbol()).isEqualTo("C2");
+        assertThat(coin.marketCapRank()).isEqualTo(2);
+    }
+
+    @Test
+    void unknownSymbolReturns404() {
+        assertThatThrownBy(() -> client.get().uri("/market/coins/DOGE")
+                .retrieve().body(CoinResponse.class))
+                .isInstanceOfSatisfying(HttpClientErrorException.class,
+                        ex -> assertThat(ex.getStatusCode().value()).isEqualTo(404));
     }
 
     @Test
@@ -113,23 +367,5 @@ class MarketControllerIT {
 
         assertThat(btc.cmcId()).isEqualTo(2);
         assertThat(btc.marketCapRank()).isEqualTo(1);
-    }
-
-    @Test
-    void emptyUniverseReturnsEmptyListNotAnError() {
-        repository.deleteAll();
-
-        CoinResponse[] coins = client.get().uri("/market/coins")
-                .retrieve().body(CoinResponse[].class);
-
-        assertThat(coins).isEmpty();
-    }
-
-    @Test
-    void invalidSortFieldReturns400() {
-        assertThatThrownBy(() -> client.get().uri("/market/coins?sort=bogus")
-                .retrieve().body(CoinResponse[].class))
-                .isInstanceOfSatisfying(HttpClientErrorException.class,
-                        ex -> assertThat(ex.getStatusCode().value()).isEqualTo(400));
     }
 }
