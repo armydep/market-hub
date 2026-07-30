@@ -70,4 +70,23 @@ class CryptoPollerIT {
         assertThat(upserted).isZero();
         assertThat(repository.count()).isEqualTo(1); // last-known universe preserved
     }
+
+    @Test
+    void suspiciouslyPartialResultSkipsCycleAndPreservesUniverse() {
+        stub.setQuotes(List.of(
+                StubPriceProvider.quote(1, "C1", 1, "1"), StubPriceProvider.quote(2, "C2", 2, "1"),
+                StubPriceProvider.quote(3, "C3", 3, "1"), StubPriceProvider.quote(4, "C4", 4, "1"),
+                StubPriceProvider.quote(5, "C5", 5, "1"), StubPriceProvider.quote(6, "C6", 6, "1"),
+                StubPriceProvider.quote(7, "C7", 7, "1"), StubPriceProvider.quote(8, "C8", 8, "1"),
+                StubPriceProvider.quote(9, "C9", 9, "1"), StubPriceProvider.quote(10, "C10", 10, "1")));
+        poller.pollOnce();
+        assertThat(repository.count()).isEqualTo(10);
+
+        // e.g. a paginated/truncated CMC response - well under half the current universe.
+        stub.setQuotes(List.of(StubPriceProvider.quote(1, "C1", 1, "1"), StubPriceProvider.quote(2, "C2", 2, "1")));
+        int upserted = poller.pollOnce();
+
+        assertThat(upserted).isZero();
+        assertThat(repository.count()).isEqualTo(10); // full universe preserved, nothing wrongly delisted
+    }
 }

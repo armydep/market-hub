@@ -27,7 +27,10 @@ import jakarta.annotation.PostConstruct;
  * the {@link PriceProvider} and drops coins that left it, then publishes
  * {@link PollCompletedEvent}. An empty provider result (no key / transient
  * failure) skips the cycle so the last-known universe is preserved rather than
- * wiped.
+ * wiped. A result less than half the current universe size is treated the
+ * same way - a real ranking shuffle never drops that far in one cycle, so a
+ * response that small looks like a partial/truncated fetch, not a genuine
+ * mass delisting.
  */
 @Component
 public class CryptoPoller {
@@ -86,6 +89,14 @@ public class CryptoPoller {
         List<ProviderQuote> quotes = provider.fetchTopCoins(coinLimit, convert);
         if (quotes.isEmpty()) {
             log.warn("Provider '{}' returned no data; skipping cycle (universe unchanged)", provider.name());
+            return 0;
+        }
+
+        long currentSize = repository.count();
+        if (currentSize > 0 && quotes.size() * 2L < currentSize) {
+            log.warn("Provider '{}' returned only {} coins, well below the current universe size ({}); "
+                            + "skipping cycle rather than treating the rest as delisted (possible partial failure)",
+                    provider.name(), quotes.size(), currentSize);
             return 0;
         }
 
