@@ -4,23 +4,35 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 import com.am.market_hub.market.provider.ProviderQuote;
+import org.springframework.data.domain.Persistable;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 
 /**
  * One coin in the cached top-N universe. Poller-owned read-model, keyed by the
  * CoinMarketCap id. Fully re-upserted each poll cycle; not user data.
+ *
+ * <p>Implements {@link Persistable} because cmcId is an assigned (not
+ * generated) id: without it, Spring Data can't tell insert from update from
+ * the id alone, so {@code save()} always issues a SELECT-then-merge - one
+ * avoidable extra query per coin the very first time it's saved. The
+ * transient {@code isNew} flag, set only in {@link #fromProvider}, lets it
+ * skip straight to insert for genuinely new coins.
  */
 @Entity
 @Table(name = "crypto_quotes")
-public class CryptoQuote {
+public class CryptoQuote implements Persistable<Integer> {
 
     @Id
     @Column(name = "cmc_id")
     private Integer cmcId;
+
+    @Transient
+    private boolean isNew = false;
 
     private String symbol;
     private String name;
@@ -64,8 +76,19 @@ public class CryptoQuote {
     public static CryptoQuote fromProvider(ProviderQuote q) {
         CryptoQuote quote = new CryptoQuote();
         quote.cmcId = q.cmcId();
+        quote.isNew = true;
         quote.applyProvider(q);
         return quote;
+    }
+
+    @Override
+    public Integer getId() {
+        return cmcId;
+    }
+
+    @Override
+    public boolean isNew() {
+        return isNew;
     }
 
     /** Overwrite the mutable quote fields from a fresh provider reading. */
