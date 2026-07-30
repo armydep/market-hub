@@ -41,6 +41,9 @@ app:
   market:
     # PRD 7.3 requires these to be configuration rather than constants.
     # Validated against the CoinColumn catalog at startup.
+    # NOTE: the two list values must stay comma-delimited strings — they bind via
+    # @Value, so YAML block-sequence syntax (- 20) would leave the placeholder
+    # unresolved and fail startup with a misleading "could not resolve" message.
     default-page-size: ${MARKET_DEFAULT_PAGE_SIZE:20}
     supported-page-sizes: ${MARKET_SUPPORTED_PAGE_SIZES:20,50,100}
     default-visible-columns: ${MARKET_DEFAULT_VISIBLE_COLUMNS:marketCapRank,name,symbol,price,pctChange1h,pctChange24h,pctChange7d,marketCap,volume24h,circulatingSupply}

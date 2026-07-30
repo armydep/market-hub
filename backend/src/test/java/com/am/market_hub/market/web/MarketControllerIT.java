@@ -3,7 +3,13 @@ package com.am.market_hub.market.web;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import static org.assertj.core.api.Assertions.within;
+
 import java.math.BigDecimal;
+import java.sql.Timestamp;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -18,6 +24,9 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
+import org.springframework.jdbc.core.JdbcTemplate;
+
+import com.am.market_hub.market.domain.CryptoQuote;
 import com.am.market_hub.market.dto.CoinPageResponse;
 import com.am.market_hub.market.dto.CoinResponse;
 import com.am.market_hub.market.dto.ColumnCatalogResponse;
@@ -40,8 +49,12 @@ import com.am.market_hub.support.TestcontainersConfig;
 @Import({TestcontainersConfig.class, StubProviderConfig.class})
 @TestPropertySource(properties = {
         "app.poller.enabled=false",
-        "app.market.supported-page-sizes=5,20,50,100",
-        "app.market.default-page-size=20"
+        // Deliberately non-default values: the catalog assertions can only pass
+        // if the endpoint actually reads configuration rather than hardcoding.
+        // 2 and 5 exist so pagination can cut a page against the 12-coin fixture.
+        "app.market.supported-page-sizes=2,5,20,50,100",
+        "app.market.default-page-size=20",
+        "app.market.default-visible-columns=marketCapRank,name,symbol,price"
 })
 class MarketControllerIT {
 
@@ -55,6 +68,8 @@ class MarketControllerIT {
     private CryptoPoller poller;
     @Autowired
     private CryptoQuoteRepository repository;
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     private RestClient client;
 
@@ -147,6 +162,12 @@ class MarketControllerIT {
     }
 
     @Test
+    void supportedPageSizesAreAccepted() {
+        assertThat(get("/market/coins?size=50").size()).isEqualTo(50);
+        assertThat(get("/market/coins?size=100").size()).isEqualTo(100);
+    }
+
+    @Test
     void unsupportedPageSizeReturns400() {
         assertBadRequest(() -> get("/market/coins?size=25"));
         assertBadRequest(() -> get("/market/coins?size=0"));
@@ -188,9 +209,12 @@ class MarketControllerIT {
                         BigDecimal.TEN, BigDecimal.ONE, BigDecimal.ONE, "USD")));
         poller.pollOnce();
 
-        CoinPageResponse response = get("/market/coins?sort=price&order=desc");
-
-        assertThat(response.content()).extracting(CoinResponse::symbol).containsExactly("BTC", "NEW");
+        assertThat(get("/market/coins?sort=price&order=desc").content())
+                .extracting(CoinResponse::symbol).containsExactly("BTC", "NEW");
+        // The AC covers both directions; ascending relies on Postgres's default
+        // but the explicit nullsLast() must not regress it either.
+        assertThat(get("/market/coins?sort=price&order=asc").content())
+                .extracting(CoinResponse::symbol).containsExactly("BTC", "NEW");
     }
 
     @Test
@@ -246,17 +270,18 @@ class MarketControllerIT {
 
     @Test
     void searchAndSortComposeAcrossTheWholeMatchingSet() {
-        // q=c1 matches C1, C10, C11, C12 by symbol. Sorting by price descending
-        // must order that filtered set globally before the page is cut.
+        // q=c1 matches C1, C10, C11, C12 by symbol. size=2 forces a real page cut,
+        // so page 0 can only be [C12, C11] if the filtered set was sorted globally
+        // *before* being paginated.
         CoinPageResponse response = client.get()
                 .uri(b -> b.path("/market/coins").queryParam("q", "c1")
                         .queryParam("sort", "price").queryParam("order", "desc")
-                        .queryParam("size", 5).build())
+                        .queryParam("size", 2).build())
                 .retrieve().body(CoinPageResponse.class);
 
         assertThat(response.totalElements()).isEqualTo(4);
-        assertThat(response.content()).extracting(CoinResponse::symbol)
-                .containsExactly("C12", "C11", "C10", "C1");
+        assertThat(response.totalPages()).isEqualTo(2);
+        assertThat(response.content()).extracting(CoinResponse::symbol).containsExactly("C12", "C11");
     }
 
     // --- column catalog ---------------------------------------------------
@@ -269,20 +294,35 @@ class MarketControllerIT {
         assertThat(catalog.supported()).containsExactlyInAnyOrder(
                 "symbol", "name", "marketCapRank", "price", "pctChange1h", "pctChange24h",
                 "pctChange7d", "marketCap", "volume24h", "circulatingSupply");
-        assertThat(catalog.defaultVisible()).isNotEmpty();
-        assertThat(catalog.supported()).containsAll(catalog.defaultVisible());
-        assertThat(catalog.supportedPageSizes()).contains(20);
+        // containsExactly, in order, against the values pinned in @TestPropertySource:
+        // a hardcoded or ignored configuration cannot satisfy these.
+        assertThat(catalog.defaultVisible())
+                .containsExactly("marketCapRank", "name", "symbol", "price");
+        assertThat(catalog.supportedPageSizes()).containsExactly(2, 5, 20, 50, 100);
         assertThat(catalog.defaultPageSize()).isEqualTo(20);
+        assertThat(catalog.supported()).containsAll(catalog.defaultVisible());
     }
 
     // --- freshness (F001-FR-019) -----------------------------------------
 
     @Test
-    void lastUpdatedAtReflectsTheStoredUniverse() {
+    void lastUpdatedAtIsTheNewestTimestampNotTheOldest() {
+        // Comparing the response against repository.findLastUpdatedAt() would be
+        // a tautology - it's the very call the endpoint makes, so it would pass
+        // just as happily with max() changed to min(). Backdate one row instead
+        // so newest and oldest are genuinely different values.
+        List<CryptoQuote> quotes = repository.findAll();
+        assertThat(quotes).hasSizeGreaterThan(1);
+        Instant newest = quotes.stream().map(CryptoQuote::getUpdatedAt).max(Instant::compareTo).orElseThrow();
+        Instant backdated = newest.minus(Duration.ofDays(7));
+        jdbcTemplate.update("update crypto_quotes set updated_at = ? where cmc_id = ?",
+                Timestamp.from(backdated), quotes.get(0).getCmcId());
+
         CoinPageResponse response = get("/market/coins");
 
         assertThat(response.lastUpdatedAt()).isNotNull();
-        assertThat(response.lastUpdatedAt()).isEqualTo(repository.findLastUpdatedAt());
+        assertThat(response.lastUpdatedAt()).isCloseTo(newest, within(1, ChronoUnit.MILLIS));
+        assertThat(response.lastUpdatedAt()).isAfter(backdated);
     }
 
     @Test

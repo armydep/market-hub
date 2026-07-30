@@ -49,21 +49,39 @@ public class MarketService {
      * unexplained empty grid much later.
      */
     private void validateConfiguration() {
+        // An empty list is the likeliest accident (an env file with a trailing
+        // `MARKET_DEFAULT_VISIBLE_COLUMNS=`) and produces exactly the silent
+        // empty grid this method exists to prevent, so check it first.
+        if (defaultVisibleColumns.isEmpty()) {
+            throw new IllegalStateException(configError("default-visible-columns",
+                    "MARKET_DEFAULT_VISIBLE_COLUMNS") + " must not be empty");
+        }
         List<String> unknown = defaultVisibleColumns.stream()
                 .filter(key -> CoinColumn.byKey(key).isEmpty())
                 .toList();
         if (!unknown.isEmpty()) {
-            throw new IllegalStateException(
-                    "app.market.default-visible-columns contains unknown column key(s): " + unknown
-                            + "; supported: " + CoinColumn.keys());
+            throw new IllegalStateException(configError("default-visible-columns",
+                    "MARKET_DEFAULT_VISIBLE_COLUMNS")
+                    + " contains unknown column key(s): " + unknown + "; supported: " + CoinColumn.keys());
+        }
+        if (defaultVisibleColumns.size() != Set.copyOf(defaultVisibleColumns).size()) {
+            throw new IllegalStateException(configError("default-visible-columns",
+                    "MARKET_DEFAULT_VISIBLE_COLUMNS")
+                    + " contains duplicate column key(s): " + defaultVisibleColumns);
         }
         if (supportedPageSizes.isEmpty()) {
-            throw new IllegalStateException("app.market.supported-page-sizes must not be empty");
+            throw new IllegalStateException(configError("supported-page-sizes",
+                    "MARKET_SUPPORTED_PAGE_SIZES") + " must not be empty");
         }
         if (!supportedPageSizes.contains(defaultPageSize)) {
-            throw new IllegalStateException("app.market.default-page-size (" + defaultPageSize
-                    + ") must be one of app.market.supported-page-sizes " + supportedPageSizes);
+            throw new IllegalStateException(configError("default-page-size", "MARKET_DEFAULT_PAGE_SIZE")
+                    + " (" + defaultPageSize + ") must be one of " + supportedPageSizes);
         }
+    }
+
+    /** Name both forms: the operator sets the env var, the stack trace shows the property. */
+    private static String configError(String property, String envVar) {
+        return "app.market." + property + " (env " + envVar + ")";
     }
 
     /**
@@ -86,7 +104,7 @@ public class MarketService {
                 .orElseThrow(() -> ApiException.notFound("Unknown symbol: " + symbol));
     }
 
-    @Transactional(readOnly = true)
+    /** Pure configuration — no database access, so no transaction. */
     public ColumnCatalogResponse columnCatalog() {
         return new ColumnCatalogResponse(
                 List.copyOf(CoinColumn.keys()),

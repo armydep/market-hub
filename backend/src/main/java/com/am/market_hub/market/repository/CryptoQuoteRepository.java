@@ -2,13 +2,11 @@ package com.am.market_hub.market.repository;
 
 import java.time.Instant;
 import java.util.Collection;
-import java.util.List;
 import java.util.Optional;
 
 import com.am.market_hub.market.domain.CryptoQuote;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -24,8 +22,6 @@ public interface CryptoQuoteRepository extends JpaRepository<CryptoQuote, Intege
      * findBy that assumes at most one row.
      */
     Optional<CryptoQuote> findFirstBySymbolIgnoreCaseOrderByMarketCapRankAsc(String symbol);
-
-    List<CryptoQuote> findAllBy(Sort sort);
 
     /**
      * Paginated substring search over name OR symbol (F-002). Filtering, sorting
