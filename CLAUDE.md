@@ -39,6 +39,16 @@ Run from `backend/`:
 Both test-runner agents follow the same contract: report failures only,
 cap output at 40 lines, never modify files, never include raw tool output.
 
+## CI parity
+Before pushing, both test-runner subagents must pass. They mirror
+`.github/workflows/ci.yml` exactly:
+- backend: `./mvnw test`
+- frontend: `npm run lint && npm run build && npm test`
+
+A subagent pass means CI should pass. If CI fails after both subagents
+passed, that's a signal the agent definitions have drifted from the
+workflow — fix the agent, not just the immediate failure.
+
 ## Conventions
 - Schema is Flyway-only (`db/migration/V__*.sql`); JPA `ddl-auto=validate` — never let Hibernate alter schema.
 - Constructor injection only; no field injection. DTOs are `record`s. Entities are not returned from controllers.
