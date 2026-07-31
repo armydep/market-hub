@@ -1,4 +1,4 @@
-import { ApiError, type ApiErrorBody, type CoinPage, type ColumnCatalog } from './types'
+import { ApiError, type ApiErrorBody, type Coin, type CoinPage, type ColumnCatalog } from './types'
 
 /**
  * Relative base: in development Vite proxies /api to the backend, and in a
@@ -59,4 +59,8 @@ export function fetchCoins(query: CoinQuery, signal?: AbortSignal): Promise<Coin
 
 export function fetchColumnCatalog(signal?: AbortSignal): Promise<ColumnCatalog> {
   return getJson<ColumnCatalog>('/market/columns', signal)
+}
+
+export function fetchCoin(symbol: string, signal?: AbortSignal): Promise<Coin> {
+  return getJson<Coin>(`/market/coins/${encodeURIComponent(symbol)}`, signal)
 }

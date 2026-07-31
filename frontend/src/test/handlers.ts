@@ -29,6 +29,28 @@ export function resetFailures() {
   failuresRemaining = 0
 }
 
+/** Every /market/coins/:symbol request the app made, in order. */
+export const recordedSymbolRequests: URL[] = []
+
+export function lastSymbolRequest(): URL {
+  const url = recordedSymbolRequests.at(-1)
+  if (!url) throw new Error('No /market/coins/:symbol request was made')
+  return url
+}
+
+export function resetRecordedSymbolRequests() {
+  recordedSymbolRequests.length = 0
+}
+
+/** Fails the next N single-coin requests, so a detail-page refresh failure can be simulated. */
+let symbolFailuresRemaining = 0
+export function failNextCoinDetailRequests(count: number) {
+  symbolFailuresRemaining = count
+}
+export function resetSymbolFailures() {
+  symbolFailuresRemaining = 0
+}
+
 function compare(a: Coin, b: Coin, field: string): number {
   const left = a[field as keyof Coin]
   const right = b[field as keyof Coin]
@@ -107,5 +129,41 @@ export const handlers = [
     }
 
     return HttpResponse.json(buildPage(url))
+  }),
+
+  http.get('/api/market/coins/:symbol', ({ request, params }) => {
+    const url = new URL(request.url)
+    recordedSymbolRequests.push(url)
+
+    if (symbolFailuresRemaining > 0) {
+      symbolFailuresRemaining -= 1
+      return HttpResponse.json(
+        {
+          timestamp: new Date().toISOString(),
+          status: 500,
+          error: 'Internal Server Error',
+          message: 'Upstream unavailable',
+        },
+        { status: 500 },
+      )
+    }
+
+    // Case-insensitive, mirroring the backend's confirmed
+    // getBySymbolIsCaseInsensitive behavior.
+    const requested = String(params.symbol).toUpperCase()
+    const coin = COINS.find((c) => c.symbol.toUpperCase() === requested)
+    if (!coin) {
+      return HttpResponse.json(
+        {
+          timestamp: new Date().toISOString(),
+          status: 404,
+          error: 'Not Found',
+          message: `Unknown symbol: ${params.symbol}`,
+        },
+        { status: 404 },
+      )
+    }
+
+    return HttpResponse.json(coin)
   }),
 ]

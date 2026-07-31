@@ -5,6 +5,7 @@ import {
   type ColumnDef,
 } from '@tanstack/react-table'
 import { useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import type { Coin } from '../api/types'
 import { columnLabel, formatCompactUsd, formatNumber, formatPercent, formatUsd } from '../format'
 import styles from './CoinGrid.module.css'
@@ -122,8 +123,25 @@ export function CoinGrid({ coins, visibleColumns, sort, order, onSortChange }: P
         <tbody>
           {table.getRowModel().rows.map((row) => (
             <tr key={row.id}>
-              {row.getVisibleCells().map((cell) => (
-                <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
+              {row.getVisibleCells().map((cell, index) => (
+                <td key={cell.id}>
+                  {index === 0 && (
+                    // A stretched-link overlay, not a whole-row <a>: a <tr>'s
+                    // content model requires direct td/th children, so wrapping
+                    // multiple cells in one anchor would be invalid HTML. This
+                    // covers the row visually (via CSS) while staying validly
+                    // nested in a single cell, and — being a real anchor with a
+                    // real href — keeps right-click/middle-click/ctrl-click
+                    // "open in new tab" working, which a bare onClick handler
+                    // on the <tr> would silently lose.
+                    <Link
+                      to={`/coins/${row.original.symbol}`}
+                      className={styles.rowLink}
+                      aria-label={`${row.original.name} (${row.original.symbol}) details`}
+                    />
+                  )}
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </td>
               ))}
             </tr>
           ))}

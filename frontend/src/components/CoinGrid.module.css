@@ -36,8 +36,17 @@
   border-bottom: none;
 }
 
+.table tbody tr {
+  position: relative;
+}
+
 .table tbody tr:hover {
   background: var(--surface-alt);
+}
+
+.rowLink {
+  position: absolute;
+  inset: 0;
 }
 
 .sortButton {

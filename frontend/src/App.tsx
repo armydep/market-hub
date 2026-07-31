@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { EmptyState } from './components/States'
+import { CoinDetailPage } from './pages/CoinDetailPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { makeQueryClient } from './queryClient'
 import './App.css'
@@ -26,6 +27,7 @@ export function App({ queryClient }: Props = {}) {
           <ErrorBoundary>
             <Routes>
               <Route path="/" element={<DashboardPage />} />
+              <Route path="/coins/:symbol" element={<CoinDetailPage />} />
               <Route
                 path="*"
                 element={<EmptyState title="Page not found" hint="That route doesn't exist." />}
