@@ -1,4 +1,5 @@
 import { QueryClientProvider, type QueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { EmptyState } from './components/States'
@@ -13,7 +14,11 @@ interface Props {
 
 /** Routes and providers, without a router — so tests can supply their own. */
 export function App({ queryClient }: Props = {}) {
-  const client = queryClient ?? makeQueryClient()
+  // Lazy initial state, not a bare call: building the client in the render body
+  // works today only because react-router happens not to re-render App. Add one
+  // piece of state above it and every navigation would discard the whole cache.
+  const [fallbackClient] = useState(makeQueryClient)
+  const client = queryClient ?? fallbackClient
   return (
     <QueryClientProvider client={client}>
       <div className="app-shell">

@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import { CoinGrid } from '../components/CoinGrid'
 import { DashboardToolbar } from '../components/DashboardToolbar'
 import { Pagination } from '../components/Pagination'
@@ -11,14 +12,30 @@ import styles from './DashboardPage.module.css'
 export function DashboardPage() {
   const catalog = useColumnCatalog()
   // Until the catalog loads there's no server default to fall back on; 20 is the
-  // PRD-fixed default and is replaced as soon as the catalog arrives.
+  // PRD-fixed default. The coin query stays disabled until the catalog resolves,
+  // so no request is ever sent carrying this placeholder.
   const { params, update, updateAndResetPage } = useDashboardParams(
     catalog.data?.defaultPageSize ?? 20,
+    catalog.data?.supportedPageSizes,
   )
-  const coins = useCoins(params)
+  const coins = useCoins(params, catalog.isSuccess)
 
   const chosenColumns = useColumnsStore((s) => s.visibleColumns)
   const toggleColumn = useColumnsStore((s) => s.toggleColumn)
+
+  // Stable identities: DashboardToolbar debounces the search and lists its
+  // handler in the effect deps, so an inline arrow would restart the 300ms
+  // timer on every re-render of this page (isFetching alone flips twice per
+  // refetch) and could defer the URL update indefinitely while typing.
+  const onSearchChange = useCallback(
+    (q: string) => updateAndResetPage({ q }),
+    [updateAndResetPage],
+  )
+  const onPageSizeChange = useCallback(
+    (size: number) => updateAndResetPage({ size }),
+    [updateAndResetPage],
+  )
+  const onPageChange = useCallback((next: number) => update({ page: next }), [update])
 
   if (catalog.isLoading) {
     return <LoadingState label="Loading dashboard…" />
@@ -57,10 +74,10 @@ export function DashboardPage() {
 
       <DashboardToolbar
         search={params.q}
-        onSearchChange={(q) => updateAndResetPage({ q })}
+        onSearchChange={onSearchChange}
         pageSize={params.size}
         supportedPageSizes={supportedPageSizes}
-        onPageSizeChange={(size) => updateAndResetPage({ size })}
+        onPageSizeChange={onPageSizeChange}
         supportedColumns={supported}
         visibleColumns={visibleColumns}
         onToggleColumn={(key) => toggleColumn(key, defaultVisible)}
@@ -108,7 +125,7 @@ export function DashboardPage() {
             page={page.page}
             totalPages={page.totalPages}
             totalElements={page.totalElements}
-            onPageChange={(next) => update({ page: next })}
+            onPageChange={onPageChange}
           />
         </>
       )}

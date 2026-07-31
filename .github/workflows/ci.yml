@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
 
+# Least privilege: these jobs only read the checkout. Without this block the
+# workflow inherits whatever the repository default is, which may be write.
+permissions:
+  contents: read
+
 # A superseded run on the same branch has nothing left to tell us.
 concurrency:
   group: ci-${{ github.ref }}

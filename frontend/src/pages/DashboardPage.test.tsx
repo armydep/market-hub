@@ -1,7 +1,16 @@
-import { screen, waitFor, within } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
-import { renderApp } from '../test/renderApp'
+import { QueryClient } from '@tanstack/react-query'
+import { render, screen, waitFor, within } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
+import { App } from '../App'
+import { HttpResponse, http } from 'msw'
+import { describe, expect, it, vi } from 'vitest'
+import { formatTimestamp } from '../format'
+import { REFRESH_INTERVAL_MS } from '../hooks/useCoins'
+import { useColumnsStore } from '../store/columnsStore'
+import { LAST_UPDATED } from '../test/fixtures'
 import { failNextCoinRequests, lastRequest, recordedRequests } from '../test/handlers'
+import { renderApp } from '../test/renderApp'
+import { server } from '../test/setup'
 
 async function rowSymbols(): Promise<string[]> {
   const table = await screen.findByRole('table')
@@ -18,13 +27,54 @@ describe('Public Market Dashboard', () => {
     const headers = screen.getAllByRole('columnheader')
     expect(headers).toHaveLength(5)
     expect(await rowSymbols()).toHaveLength(12)
-    expect(lastRequest().searchParams.get('size')).toBe('20')
+    // 50 is the fixture catalog's default; 20 is the client's fallback.
+    // Asserting 50 is what proves the client follows the server.
+    expect(lastRequest().searchParams.get('size')).toBe('50')
   })
 
   it('shows the last successful update time', async () => {
     renderApp()
     const stamp = await screen.findByTestId('last-updated')
-    await waitFor(() => expect(stamp.textContent).not.toBe('—'))
+    // Asserting the actual formatted value, not merely "not the placeholder":
+    // 'Invalid Date', 'undefined' and a raw ISO string would all clear that bar.
+    await waitFor(() => expect(stamp).toHaveTextContent(formatTimestamp(LAST_UPDATED)))
+  })
+
+  it('renders monetary values as USD (F001-FR-022)', async () => {
+    renderApp('/?size=5')
+    const table = await screen.findByRole('table')
+
+    const firstRow = within(table).getAllByRole('row')[1]
+    const cells = within(firstRow).getAllByRole('cell')
+    // Column order is rank, name, symbol, price, 24h% — price is index 3.
+    expect(cells[3]).toHaveTextContent('$60,000.00')
+  })
+
+  it('reports totals for the whole dataset, not the current page', async () => {
+    renderApp('/?size=5')
+    await screen.findByRole('table')
+
+    expect(await screen.findByTestId('page-summary')).toHaveTextContent('12 coins')
+  })
+
+  it('renders an empty-universe state distinct from the no-results state', async () => {
+    server.use(
+      http.get('/api/market/coins', () =>
+        HttpResponse.json({
+          content: [],
+          page: 0,
+          size: 20,
+          totalElements: 0,
+          totalPages: 0,
+          lastUpdatedAt: null,
+        }),
+      ),
+    )
+    renderApp()
+
+    expect(await screen.findByText(/no market data yet/i)).toBeInTheDocument()
+    // The search-empty wording must not leak into the never-polled case.
+    expect(screen.queryByText(/no results found/i)).not.toBeInTheDocument()
   })
 
   describe('sorting', () => {
@@ -40,6 +90,13 @@ describe('Public Market Dashboard', () => {
         expect(lastRequest().searchParams.get('sort')).toBe('price')
         expect(lastRequest().searchParams.get('order')).toBe('asc')
       })
+      // Sort state must reach assistive tech, on the columnheader itself.
+      await waitFor(() =>
+        expect(screen.getByRole('columnheader', { name: /price/i })).toHaveAttribute(
+          'aria-sort',
+          'ascending',
+        ),
+      )
     })
 
     it('toggles to descending on a second click and reflects the server order', async () => {
@@ -95,8 +152,10 @@ describe('Public Market Dashboard', () => {
       await user.type(screen.getByLabelText(/search/i), 'coin')
 
       await waitFor(() => expect(lastRequest().searchParams.get('q')).toBe('coin'))
+      // Exact set, not arrayContaining: the loose form would also pass if the
+      // server ignored `q` and returned all twelve coins.
       await waitFor(async () =>
-        expect(await rowSymbols()).toEqual(expect.arrayContaining(['BTC', 'DOGE', 'LTC'])),
+        expect((await rowSymbols()).sort()).toEqual(['BTC', 'DOGE', 'LTC']),
       )
     })
 
@@ -104,7 +163,8 @@ describe('Public Market Dashboard', () => {
       const { user } = renderApp()
       await screen.findByRole('table')
 
-      // "TC" appears in BTC and LTC as symbols; no fixture name contains it.
+      // Discriminates via LTC: "bitcoin" does contain "tc", so BTC could match
+      // on name, but no fixture name contains "ltc" — only the symbol does.
       await user.type(screen.getByLabelText(/search/i), 'TC')
 
       await waitFor(() => expect(lastRequest().searchParams.get('q')).toBe('TC'))
@@ -164,13 +224,13 @@ describe('Public Market Dashboard', () => {
       await screen.findByRole('table')
 
       const options = within(screen.getByLabelText(/rows/i)).getAllByRole('option')
-      expect(options.map((o) => o.textContent)).toEqual(['5', '20', '50'])
+      expect(options.map((o) => o.textContent)).toEqual(['2', '5', '20', '50'])
     })
   })
 
   describe('refresh', () => {
     it('preserves page, size, sort and search across a manual refresh', async () => {
-      // q=o matches 9 fixture coins, so page 1 at size 5 genuinely has rows —
+      // q=o matches 8 fixture coins, so page 1 at size 5 genuinely has rows —
       // a narrower term would leave an empty page and test nothing.
       const { user } = renderApp('/?page=1&size=5&sort=price&order=desc&q=o')
       await screen.findByRole('table')
@@ -185,6 +245,35 @@ describe('Public Market Dashboard', () => {
       expect(params.get('sort')).toBe('price')
       expect(params.get('order')).toBe('desc')
       expect(params.get('q')).toBe('o')
+    })
+
+    it('refetches automatically on the configured interval', async () => {
+      // Fake timers must be installed *before* render: React Query schedules
+      // the interval when the query mounts, and a timer created under real
+      // timers can't be advanced by fakes installed afterwards.
+      vi.useFakeTimers()
+      try {
+        const queryClient = new QueryClient({
+          defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
+        })
+        const { unmount } = render(
+          <MemoryRouter initialEntries={['/']}>
+            <App queryClient={queryClient} />
+          </MemoryRouter>,
+        )
+
+        // Drive the catalog fetch and the first coin fetch to completion.
+        await vi.advanceTimersByTimeAsync(100)
+        const before = recordedRequests.length
+        expect(before).toBeGreaterThan(0)
+
+        await vi.advanceTimersByTimeAsync(REFRESH_INTERVAL_MS + 100)
+
+        expect(recordedRequests.length).toBeGreaterThan(before)
+        unmount()
+      } finally {
+        vi.useRealTimers()
+      }
     })
 
     it('keeps the last good rows on screen when a refresh fails', async () => {
@@ -214,10 +303,25 @@ describe('Public Market Dashboard', () => {
 
       await waitFor(() => expect(screen.getAllByRole('columnheader')).toHaveLength(4))
 
-      // Remount against the same localStorage, standing in for a reload.
-      unmount()
-      renderApp()
+      // The choice must have reached localStorage, not just component state.
+      // If `persist` were removed this is null and the test fails here — which
+      // is the point: the previous version of this test passed with `persist`
+      // deleted entirely, because it only ever re-read the in-memory store.
+      const persisted = localStorage.getItem('market-hub.columns')
+      expect(persisted).toContain('marketCapRank')
+      expect(persisted).not.toContain('pctChange24h')
 
+      // Simulate a reload. Unmounting alone isn't enough — the store lives at
+      // module scope, so a remount reads the same object. Clearing the
+      // in-memory state also writes null back to storage (persist subscribes to
+      // every change), so the snapshot has to be put back to stand in for what
+      // a fresh page load would actually find.
+      unmount()
+      useColumnsStore.setState({ visibleColumns: null })
+      localStorage.setItem('market-hub.columns', persisted!)
+      await useColumnsStore.persist.rehydrate()
+
+      renderApp()
       await screen.findByRole('table')
       await waitFor(() => expect(screen.getAllByRole('columnheader')).toHaveLength(4))
     })

@@ -97,9 +97,16 @@ parameter changes, so paging doesn't flash an empty grid.
 
 ### The URL is the single source of truth for the view
 
-`page`, `size`, `sort`, `order` and `q` live in the query string and nowhere else. No component
-mirrors them into local state, because two sources of truth for the same value is how "refresh
-preserved four of the five things" bugs happen.
+`page`, `size`, `sort`, `order` and `q` live in the query string, and no component holds an
+independent copy — two sources of truth for the same value is how "refresh preserved four of the
+five things" bugs happen. The one deliberate exception is the toolbar's search input, which mirrors
+`q` into local state so typing feels immediate while the URL update is debounced; the URL still wins
+on every render.
+
+An unsupported `size` arriving from a shared or hand-edited URL is clamped to the server default
+rather than forwarded: the deep-linkable design makes that value externally reachable, and passing
+it through would be a server 400 *and* would leave the page-size control showing a value matching
+none of its options.
 
 ### Refresh never reaches the provider
 
