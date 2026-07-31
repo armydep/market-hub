@@ -27,6 +27,11 @@
 .table thead th {
   position: sticky;
   top: 0;
+  /* Without this, the header and the tbody rows' position:relative (for the
+     row-link overlay below) are both "positioned, z-index: auto", so paint
+     order falls back to DOM order — meaning a scrolled-under row's invisible
+     link would sit above the sticky header and swallow sort-button clicks. */
+  z-index: 1;
   background: var(--surface-alt);
   font-weight: 600;
   padding: 0;

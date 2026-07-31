@@ -70,6 +70,35 @@ describe('Asset Details', () => {
     expect(screen.getByText(formatUsd(BTC.price))).toBeInTheDocument()
   })
 
+  it('keeps the last good coin on screen when a later refresh 404s (coin left the top-N universe)', async () => {
+    // A 404 on a *refresh* is not the same as a 404 on first load: the coin
+    // can transiently drop out of the tracked universe between polls
+    // (domain-model.md's "not evaluable this cycle" case), and that must be a
+    // recoverable, banner-only failure — not replace an already-loaded asset
+    // with the "not found" state.
+    const { user } = renderApp('/coins/BTC')
+    await screen.findByRole('heading', { name: /bitcoin/i })
+
+    server.use(
+      http.get('/api/market/coins/:symbol', () =>
+        HttpResponse.json(
+          {
+            timestamp: new Date().toISOString(),
+            status: 404,
+            error: 'Not Found',
+            message: 'Unknown symbol: BTC',
+          },
+          { status: 404 },
+        ),
+      ),
+    )
+    await user.click(screen.getByRole('button', { name: /^refresh$/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/couldn't refresh/i)
+    expect(screen.getByRole('heading', { name: /bitcoin/i })).toBeInTheDocument()
+    expect(screen.queryByText(/asset not found/i)).not.toBeInTheDocument()
+  })
+
   it('refetches automatically on the configured interval', async () => {
     // Fake timers must be installed before render, same reason as the
     // dashboard's equivalent test: the interval is scheduled at mount time.

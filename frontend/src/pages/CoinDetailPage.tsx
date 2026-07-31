@@ -18,7 +18,12 @@ export function CoinDetailPage() {
     return <LoadingState label="Loading asset…" />
   }
 
-  if (isError && error instanceof ApiError && error.status === 404) {
+  // Guarded on `!coin`: a still-cached coin must win over any later error,
+  // including a 404 — the coin can transiently drop out of the top-N universe
+  // between polls (domain-model.md's "not evaluable this cycle" case), and
+  // that must render as a recoverable, banner-only failure below, not wipe an
+  // already-loaded asset with a "not found" state.
+  if (isError && !coin && error instanceof ApiError && error.status === 404) {
     return (
       <EmptyState
         title="Asset not found"
