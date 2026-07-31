@@ -136,6 +136,7 @@ export function CoinGrid({ coins, visibleColumns, sort, order, onSortChange }: P
                     // on the <tr> would silently lose.
                     <Link
                       to={`/coins/${row.original.symbol}`}
+                      replace
                       className={styles.rowLink}
                       aria-label={`${row.original.name} (${row.original.symbol}) details`}
                     />
