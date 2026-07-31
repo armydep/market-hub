@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
 import { fetchCoin } from '../api/client'
-import { REFRESH_INTERVAL_MS } from './useCoins'
 
 /**
  * The single-coin detail query. Keyed disjointly from `useCoins`'s
@@ -19,7 +18,6 @@ export function useCoin(symbol: string) {
     queryKey: ['coin', symbol],
     queryFn: ({ signal }) => fetchCoin(symbol, signal),
     enabled: symbol.trim() !== '',
-    refetchInterval: REFRESH_INTERVAL_MS,
     refetchIntervalInBackground: false,
   })
 }
