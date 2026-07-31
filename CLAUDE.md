@@ -35,6 +35,10 @@ Run from `backend/`:
 - Never run `./mvnw test` in the main session — delegate to the test-runner subagent.
 - Before pushing a completed slice, delegate to the code-reviewer subagent and resolve every CRITICAL finding.
 
+## Test-runner subagents
+Both test-runner agents follow the same contract: report failures only,
+cap output at 40 lines, never modify files, never include raw tool output.
+
 ## Conventions
 - Schema is Flyway-only (`db/migration/V__*.sql`); JPA `ddl-auto=validate` — never let Hibernate alter schema.
 - Constructor injection only; no field injection. DTOs are `record`s. Entities are not returned from controllers.
