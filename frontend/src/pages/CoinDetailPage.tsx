@@ -21,7 +21,7 @@ export function CoinDetailPage() {
   if (isError && error instanceof ApiError && error.status === 404) {
     return (
       <EmptyState
-        title="Page not found"
+        title="Asset not found"
         hint={`No cryptocurrency matches "${symbol}".`}
       />
     )
