@@ -1,6 +1,13 @@
 # Maven build output
 target/
 
+# Node / frontend build output (frontend/.gitignore covers the module itself;
+# these guard against stray installs elsewhere in the tree)
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
 # Java and JVM artifacts
 *.class
 *.log

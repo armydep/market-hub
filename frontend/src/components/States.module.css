@@ -1,0 +1,47 @@
+.state {
+  padding: 2.5rem 1rem;
+  text-align: center;
+  color: var(--muted);
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
+
+.title {
+  margin: 0 0 0.35rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+.failure {
+  margin-bottom: 0.75rem;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid var(--warn-border);
+  border-radius: 6px;
+  background: var(--warn-bg);
+  color: var(--warn-text);
+  font-size: 0.88rem;
+}
+
+.fatal {
+  padding: 2rem 1rem;
+  text-align: center;
+  border: 1px solid var(--warn-border);
+  border-radius: 8px;
+  background: var(--warn-bg);
+}
+
+.retry {
+  margin-top: 0.75rem;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}

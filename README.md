@@ -5,6 +5,7 @@ Backend service for a crypto price dashboard. See [`CLAUDE.md`](CLAUDE.md) and
 
 ## Prerequisites
 - Java 21 and Maven
+- Node 22+ and npm (for the `frontend/` SPA)
 - Docker (for local Postgres and the Testcontainers-based tests)
 
 ## Run locally
@@ -27,12 +28,33 @@ Backend service for a crypto price dashboard. See [`CLAUDE.md`](CLAUDE.md) and
    curl http://localhost:8080/api/actuator/health   # -> {"status":"UP"}
    ```
 
+## Run the frontend (S3)
+The SPA lives in `frontend/` (React + Vite + TypeScript, TanStack Query/Table, Zustand).
+It expects the backend running on port 8080 — the Vite dev server proxies `/api`
+straight through, which is what stands in for the CORS config the backend
+deliberately doesn't have.
+
+```
+cd frontend
+npm install
+npm run dev        # http://localhost:5173
+```
+
+Other scripts: `npm run build` (production bundle), `npm run test` (Vitest +
+Testing Library + MSW), `npm run lint`.
+
 ## Test
 From `backend/`:
 ```
 mvn test
 ```
 Testcontainers starts a throwaway Postgres, so Docker must be available.
+
+From `frontend/`:
+```
+npm run test
+```
+Runs against a mocked API — never a live backend or provider.
 
 ## Environment variables
 Each slice documents the variables it introduces in
