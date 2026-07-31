@@ -1,6 +1,7 @@
 import { QueryClient } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import userEvent from '@testing-library/user-event'
+import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom'
 import { App } from '../App'
 import { HttpResponse, http } from 'msw'
 import { describe, expect, it, vi } from 'vitest'
@@ -16,6 +17,25 @@ async function rowSymbols(): Promise<string[]> {
   const table = await screen.findByRole('table')
   const rows = within(table).getAllByRole('row').slice(1) // drop the header row
   return rows.map((row) => within(row).getAllByRole('cell')[2].textContent ?? '')
+}
+
+/**
+ * Test-only probe rendered alongside <App> inside the same MemoryRouter, so a
+ * test can assert against the router's actual history stack rather than
+ * re-rendering App fresh at a URL (which would "pass" without proving
+ * anything about history — see the back-navigation test below).
+ */
+function LocationProbe() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  return (
+    <>
+      <span data-testid="location">{location.pathname + location.search}</span>
+      <button type="button" onClick={() => navigate(-1)}>
+        Go back (test only)
+      </button>
+    </>
+  )
 }
 
 describe('Public Market Dashboard', () => {
@@ -324,6 +344,64 @@ describe('Public Market Dashboard', () => {
       renderApp()
       await screen.findByRole('table')
       await waitFor(() => expect(screen.getAllByRole('columnheader')).toHaveLength(4))
+    })
+  })
+
+  describe('row navigation', () => {
+    it('renders each row as a real link to its coin’s detail page', async () => {
+      renderApp()
+      const table = await screen.findByRole('table')
+      const firstDataRow = within(table).getAllByRole('row')[1]
+
+      // Asserted directly on the href, not inferred from click behavior: a
+      // role="link" div with an onClick would pass a naive click-only test
+      // while still failing to support "open in new tab".
+      const link = within(firstDataRow).getByRole('link')
+      expect(link).toHaveAttribute('href', '/coins/BTC')
+    })
+
+    it('navigates to the coin detail page when the row link is activated', async () => {
+      const { user } = renderApp()
+      const table = await screen.findByRole('table')
+      const firstDataRow = within(table).getAllByRole('row')[1]
+
+      await user.click(within(firstDataRow).getByRole('link'))
+
+      expect(await screen.findByRole('heading', { name: /bitcoin/i })).toBeInTheDocument()
+    })
+
+    it('preserves the dashboard URL when navigating to a coin and back', async () => {
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
+      })
+      const initialUrl = '/?page=1&size=5&sort=price&order=desc&q=o'
+      const user = userEvent.setup()
+      render(
+        <MemoryRouter initialEntries={[initialUrl]}>
+          <LocationProbe />
+          <App queryClient={queryClient} />
+        </MemoryRouter>,
+      )
+
+      const table = await screen.findByRole('table')
+      const row = within(table).getAllByRole('row')[1]
+      const link = within(row).getByRole('link')
+      // Don't assume which coin lands on page 1 of this filtered/sorted view —
+      // read the actual target off the link itself.
+      const expectedPath = link.getAttribute('href')
+      expect(expectedPath).toMatch(/^\/coins\/\w+$/)
+      await user.click(link)
+
+      await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(expectedPath!))
+
+      // Drives the *actual* history stack the router maintains — the same
+      // mechanism a real browser back button uses — rather than re-rendering
+      // App fresh at the original URL, which would trivially pass without
+      // proving anything about history.
+      await user.click(screen.getByRole('button', { name: /go back/i }))
+
+      await screen.findByRole('table')
+      expect(screen.getByTestId('location')).toHaveTextContent(initialUrl)
     })
   })
 })
