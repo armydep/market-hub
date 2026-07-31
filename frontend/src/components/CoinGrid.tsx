@@ -5,6 +5,7 @@ import {
   type ColumnDef,
 } from '@tanstack/react-table'
 import { useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import type { Coin } from '../api/types'
 import { columnLabel, formatCompactUsd, formatNumber, formatPercent, formatUsd } from '../format'
 import styles from './CoinGrid.module.css'
@@ -133,8 +134,8 @@ export function CoinGrid({ coins, visibleColumns, sort, order, onSortChange }: P
                     // real href — keeps right-click/middle-click/ctrl-click
                     // "open in new tab" working, which a bare onClick handler
                     // on the <tr> would silently lose.
-                    <span
-                      role="link"
+                    <Link
+                      to={`/coins/${row.original.symbol}`}
                       className={styles.rowLink}
                       aria-label={`${row.original.name} (${row.original.symbol}) details`}
                     />
