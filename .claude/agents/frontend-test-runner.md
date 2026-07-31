@@ -10,16 +10,24 @@ modify files. Run these in order and stop at the first failure —
 this mirrors the CI workflow, so a pass here means CI will pass too.
 
 Steps:
-1. `cd frontend && npm run lint`
-2. `npm run build`   # this is where TypeScript errors actually surface;
+1. `cd frontend && npm ci --dry-run`   # catches package.json /
+   # package-lock.json drift before it does. CI's first real step is a
+   # clean `npm ci`, which fails hard on a stale lockfile; a local
+   # node_modules can still lint/build/test fine from an install that
+   # predates the drift, so this is the only step that would catch it
+   # here. A failure means the lockfile needs regenerating — not a
+   # code problem, so report it as such rather than guessing at lint
+   # or build causes.
+2. `npm run lint`
+3. `npm run build`   # this is where TypeScript errors actually surface;
    # `vitest run` transpiles without type-checking
-3. `npm test`
+4. `npm test`
 
-If all three pass, reply with exactly one line:
+If all four pass, reply with exactly one line:
 "All checks pass (lint, build, N tests)."
 
 If a step fails, report:
-- Which step (lint / build / test)
+- Which step (dry-run / lint / build / test)
 - File and line
 - The error or assertion message
 - A one-line hypothesis about the cause
