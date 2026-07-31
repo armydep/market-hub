@@ -27,7 +27,7 @@ export function CoinDetailPage() {
     )
   }
 
-  if (isError) {
+  if (isError && !coin) {
     return (
       <FatalError
         message={(error as Error)?.message ?? 'Could not load this asset.'}
