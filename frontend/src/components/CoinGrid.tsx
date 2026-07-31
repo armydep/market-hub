@@ -5,7 +5,6 @@ import {
   type ColumnDef,
 } from '@tanstack/react-table'
 import { useMemo } from 'react'
-import { Link } from 'react-router-dom'
 import type { Coin } from '../api/types'
 import { columnLabel, formatCompactUsd, formatNumber, formatPercent, formatUsd } from '../format'
 import styles from './CoinGrid.module.css'
