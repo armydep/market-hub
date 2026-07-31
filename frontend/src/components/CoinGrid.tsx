@@ -134,8 +134,8 @@ export function CoinGrid({ coins, visibleColumns, sort, order, onSortChange }: P
                     // real href — keeps right-click/middle-click/ctrl-click
                     // "open in new tab" working, which a bare onClick handler
                     // on the <tr> would silently lose.
-                    <Link
-                      to={`/coins/${row.original.symbol}`}
+                    <span
+                      role="link"
                       className={styles.rowLink}
                       aria-label={`${row.original.name} (${row.original.symbol}) details`}
                     />
