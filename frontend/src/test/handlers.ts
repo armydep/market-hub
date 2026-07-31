@@ -32,10 +32,27 @@ export function resetFailures() {
 function compare(a: Coin, b: Coin, field: string): number {
   const left = a[field as keyof Coin]
   const right = b[field as keyof Coin]
-  if (left === null) return 1 // nulls last, matching the server
-  if (right === null) return -1
   if (typeof left === 'number' && typeof right === 'number') return left - right
   return String(left).localeCompare(String(right))
+}
+
+/**
+ * Sort with nulls pinned last in BOTH directions, matching the server's
+ * explicit `.nullsLast()`. Null handling has to sit outside the direction flip:
+ * negating a comparator that already pushed nulls down would surface them
+ * first on `desc`, which is the exact bug the server-side hardening fixed.
+ */
+function sortCoins(coins: Coin[], field: string, order: string): Coin[] {
+  const descending = order === 'desc'
+  return coins.sort((a, b) => {
+    const left = a[field as keyof Coin]
+    const right = b[field as keyof Coin]
+    if (left === null && right === null) return 0
+    if (left === null) return 1
+    if (right === null) return -1
+    const result = compare(a, b, field)
+    return descending ? -result : result
+  })
 }
 
 /** Mirrors the real endpoint: filter, then sort, then page — in that order. */
@@ -52,10 +69,7 @@ function buildPage(url: URL) {
       )
     : [...COINS]
 
-  const sorted = filtered.sort((a, b) => {
-    const result = compare(a, b, sort)
-    return order === 'desc' ? -result : result
-  })
+  const sorted = sortCoins(filtered, sort, order)
 
   const start = page * size
   return {
@@ -64,7 +78,11 @@ function buildPage(url: URL) {
     size,
     totalElements: sorted.length,
     totalPages: Math.ceil(sorted.length / size),
-    lastUpdatedAt: sorted.length > 0 ? LAST_UPDATED : null,
+    // Freshness is a property of the last poll, not of the current query: the
+    // real server reads MAX(updated_at) over the whole universe, so a search
+    // that matches nothing still carries a timestamp. Tying this to the
+    // filtered count would teach the client the wrong contract.
+    lastUpdatedAt: COINS.length > 0 ? LAST_UPDATED : null,
   }
 }
 

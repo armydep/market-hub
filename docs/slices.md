@@ -15,9 +15,9 @@ shippable and testable, sized for one focused session, and — from S3 onward �
 |---|---|---|---|
 | S0 | Skeleton + DB + health | — | ✅ merged |
 | S1 | Market ingestion + read API | F-001 (partial) | ✅ merged |
-| S2 | Market read API completion | F-001, F-002, F-003 | ⬜ next |
-| S3 | Frontend foundation + Public Market Dashboard | F-001, F-002 | ⬜ |
-| S4 | Asset Details | F-003 | ⬜ |
+| S2 | Market read API completion | F-001, F-002, F-003 | ✅ merged |
+| S3 | Frontend foundation + Public Market Dashboard | F-001, F-002 | 🔄 in review |
+| S4 | Asset Details | F-003 | ⬜ next |
 | S5 | Auth core (register / sign in / sign out) | F-004 | ⬜ |
 | S6 | Sign-in protection + account blocking | F-004 | ⬜ |
 | S7 | Password reset | F-004 | ⬜ |

@@ -28,6 +28,9 @@ export function formatCompactUsd(value: number | null): string {
     style: 'currency',
     currency: 'USD',
     notation: 'compact',
+    // Currency style defaults to a 2-digit minimum, which renders "$25.00B".
+    // Compact notation is about scanning magnitude, so drop the padding.
+    minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(value)
 }

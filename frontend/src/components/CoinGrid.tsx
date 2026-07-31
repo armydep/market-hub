@@ -95,15 +95,18 @@ export function CoinGrid({ coins, visibleColumns, sort, order, onSortChange }: P
               {headerGroup.headers.map((header) => {
                 const isSorted = header.column.id === sort
                 return (
-                  <th key={header.id} scope="col">
+                  // aria-sort belongs on the columnheader, not on the button
+                  // inside it — it's only valid on a columnheader/rowheader.
+                  <th
+                    key={header.id}
+                    scope="col"
+                    aria-sort={isSorted ? (order === 'asc' ? 'ascending' : 'descending') : 'none'}
+                  >
                     <button
                       type="button"
                       className={styles.sortButton}
                       onClick={() => onSortChange(header.column.id)}
                       aria-label={`Sort by ${columnLabel(header.column.id)}`}
-                      aria-sort={
-                        isSorted ? (order === 'asc' ? 'ascending' : 'descending') : 'none'
-                      }
                     >
                       {flexRender(header.column.columnDef.header, header.getContext())}
                       <span aria-hidden="true" className={styles.sortIndicator}>

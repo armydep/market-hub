@@ -14,8 +14,10 @@ export const CATALOG: ColumnCatalog = {
     'circulatingSupply',
   ],
   defaultVisible: ['marketCapRank', 'name', 'symbol', 'price', 'pctChange24h'],
-  supportedPageSizes: [5, 20, 50],
-  defaultPageSize: 20,
+  // Deliberately NOT 20: 20 is the client's hardcoded fallback, so a
+  // fixture using it cannot distinguish 'follows the server' from 'ignores it'.
+  supportedPageSizes: [2, 5, 20, 50],
+  defaultPageSize: 50,
 }
 
 function coin(rank: number, symbol: string, name: string, price: number): Coin {
@@ -42,9 +44,10 @@ function coin(rank: number, symbol: string, name: string, price: number): Coin {
  * Twelve coins so a page can actually be cut — a fixture that fits on one page
  * cannot distinguish server-side paging from client-side slicing.
  *
- * Names and symbols are deliberately separable: "coin" appears only in names,
- * and no name contains a symbol substring like "TC", so a test asserting
- * name-matching can't accidentally pass via the symbol column or vice versa.
+ * Search discrimination: "coin" appears only in names (Bitcoin, Dogecoin,
+ * Litecoin) and in no symbol, so a name-matching test can't pass via the symbol
+ * column. The reverse case uses "TC" — note "bitcoin" *does* contain "tc", so
+ * that test discriminates via LTC, which matches on symbol alone.
  */
 export const COINS: Coin[] = [
   coin(1, 'BTC', 'Bitcoin', 60000),
@@ -60,5 +63,18 @@ export const COINS: Coin[] = [
   coin(11, 'AVAX', 'Avalanche', 30),
   coin(12, 'ATOM', 'Cosmos', 9),
 ]
+
+/**
+ * A coin with missing values, for the null-rendering and nulls-last paths.
+ * Kept out of COINS so it doesn't perturb every other fixture expectation;
+ * tests that need it install their own handler.
+ */
+export const COIN_WITH_NULLS: Coin = {
+  ...coin(13, 'NULLC', 'Nullcoin', 0),
+  marketCapRank: null,
+  price: null,
+  pctChange24h: null,
+  marketCap: null,
+}
 
 export const LAST_UPDATED = '2026-07-31T10:00:00Z'

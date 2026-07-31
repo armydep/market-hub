@@ -15,10 +15,15 @@ export const REFRESH_INTERVAL_MS = 60_000
  * whenever `data` exists and render the failure indicator independently when
  * `isError` is set. The two are never an either/or.
  */
-export function useCoins(params: DashboardParams) {
+export function useCoins(params: DashboardParams, enabled = true) {
   return useQuery({
     queryKey: ['coins', params],
     queryFn: ({ signal }) => fetchCoins(params, signal),
+    // Gated on the catalog: without it `size` would fall back to a hardcoded
+    // default and the very first request could carry a page size the server
+    // doesn't support (MARKET_SUPPORTED_PAGE_SIZES is configurable), producing
+    // a 400 before the catalog-driven retry succeeds.
+    enabled,
     refetchInterval: REFRESH_INTERVAL_MS,
     // Don't poll a tab nobody is looking at.
     refetchIntervalInBackground: false,
