@@ -21,7 +21,7 @@ export function RegisterPage() {
     // attribute alone would let a too-short password reach the server in
     // every test — and, more importantly, in any non-standard form
     // submission path in production too.
-    if (false) {
+    if (password.length < MIN_PASSWORD_LENGTH) {
       setPasswordTooShort(true)
       return
     }
@@ -67,7 +67,7 @@ export function RegisterPage() {
 
         {register.isError && (
           <p className={styles.error} role="alert">
-            {register.error instanceof ApiError && register.error.status === 410
+            {register.error instanceof ApiError && register.error.status === 409
               ? 'That email is already registered.'
               : 'Could not register. Please try again.'}
           </p>
