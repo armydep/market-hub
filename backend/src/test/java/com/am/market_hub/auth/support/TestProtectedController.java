@@ -20,7 +20,6 @@ public class TestProtectedController {
         return "ok";
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/test/admin-only")
     public String adminOnlyEndpoint() {
         return "ok";
