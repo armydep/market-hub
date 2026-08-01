@@ -4,14 +4,28 @@ import { ApiError } from '../api/types'
 import { useRegister } from '../hooks/useRegister'
 import styles from './RegisterPage.module.css'
 
+const MIN_PASSWORD_LENGTH = 8
+
 export function RegisterPage() {
   const navigate = useNavigate()
   const register = useRegister()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [passwordTooShort, setPasswordTooShort] = useState(false)
 
   function onSubmit(event: React.FormEvent) {
     event.preventDefault()
+    // Explicit check, not just the input's minLength attribute: jsdom (this
+    // project's test environment) doesn't enforce HTML5 constraint
+    // validation on submit the way a real browser does, so relying on the
+    // attribute alone would let a too-short password reach the server in
+    // every test — and, more importantly, in any non-standard form
+    // submission path in production too.
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      setPasswordTooShort(true)
+      return
+    }
+    setPasswordTooShort(false)
     register.mutate(
       { email, password },
       { onSuccess: () => navigate('/') },
@@ -44,6 +58,12 @@ export function RegisterPage() {
           value={password}
           onChange={(event) => setPassword(event.target.value)}
         />
+
+        {passwordTooShort && (
+          <p className={styles.error} role="alert">
+            Password must be at least {MIN_PASSWORD_LENGTH} characters.
+          </p>
+        )}
 
         {register.isError && (
           <p className={styles.error} role="alert">
