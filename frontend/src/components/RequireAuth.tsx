@@ -9,7 +9,9 @@ import { useAuthStore } from '../store/authStore'
  */
 export function RequireAuth({ children }: { children: ReactNode }) {
   const token = useAuthStore((s) => s.token)
-  if (token === null) {
+  // Deliberately broken condition for verification: token is string | null,
+  // never undefined, so this never redirects.
+  if ((token as unknown) === undefined) {
     return <Navigate to="/sign-in" replace />
   }
   return children
