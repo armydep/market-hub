@@ -30,9 +30,7 @@ public class AuthService {
         if (userRepository.findByEmailIgnoreCase(email).isPresent()) {
             throw ApiException.conflict("Email already registered");
         }
-        User user = "ADMIN".equals(request.role())
-                ? User.seedAdmin(email, passwordEncoder.encode(request.password()))
-                : User.register(email, passwordEncoder.encode(request.password()));
+        User user = User.register(email, passwordEncoder.encode(request.password()));
         userRepository.save(user);
         return toResponse(user);
     }

@@ -21,15 +21,15 @@ import com.am.market_hub.user.domain.Role;
 import com.am.market_hub.user.repository.UserRepository;
 
 /**
- * Register/login/protected-access, end-to-end against a real Postgres. The
- * JWT expiration is deliberately short (1s) so the expired-token case can
- * sleep past it rather than mock a clock — every other test here completes
- * in well under that window.
+ * Register/login/protected-access, end-to-end against a real Postgres. Uses
+ * the real (long) JWT expiration — the expired-token case lives in its own
+ * class ({@link AuthTokenExpiryIT}) with a short expiration scoped to just
+ * that test, so a slow CI run here can never flake a "valid token" test by
+ * outliving a short-lived one shared across the whole class.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfig.class)
 @TestPropertySource(properties = {
-        "app.jwt.expiration-ms=1000",
         "app.admin.email=admin@example.com",
         "app.admin.password=admin-password-123"
 })
@@ -160,18 +160,6 @@ class AuthControllerIT {
 
         assertStatus(() -> client().get().uri("/test/protected")
                 .header("Authorization", "Bearer " + tampered)
-                .retrieve().body(String.class), 401);
-    }
-
-    @Test
-    void anExpiredTokenIsRejected() throws InterruptedException {
-        String email = "expired-" + System.nanoTime() + "@example.com";
-        AuthResponse auth = register(email, "password123");
-
-        Thread.sleep(1200);
-
-        assertStatus(() -> client().get().uri("/test/protected")
-                .header("Authorization", "Bearer " + auth.token())
                 .retrieve().body(String.class), 401);
     }
 
