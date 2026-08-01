@@ -9,6 +9,8 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -35,6 +37,21 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    /**
+     * JWT auth never goes through Spring Security's AuthenticationManager /
+     * UserDetailsService — AuthService authenticates directly via
+     * PasswordEncoder, and JwtAuthFilter populates the SecurityContext itself.
+     * This bean exists only to suppress Boot's default
+     * UserDetailsServiceAutoConfiguration, which otherwise generates an
+     * unused in-memory user and logs a random password on every startup.
+     */
+    @Bean
+    public UserDetailsService userDetailsService() {
+        return username -> {
+            throw new UsernameNotFoundException("Not used: authentication is handled by AuthService");
+        };
     }
 
     @Bean
