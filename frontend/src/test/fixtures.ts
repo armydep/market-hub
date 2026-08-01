@@ -1,4 +1,4 @@
-import type { Coin, ColumnCatalog } from '../api/types'
+import type { AuthResponse, Coin, ColumnCatalog } from '../api/types'
 
 export const CATALOG: ColumnCatalog = {
   supported: [
@@ -78,3 +78,14 @@ export const COIN_WITH_NULLS: Coin = {
 }
 
 export const LAST_UPDATED = '2026-07-31T10:00:00Z'
+
+/** An already-registered account, for duplicate-email (409) and login-happy-path tests. */
+export const REGISTERED_EMAIL = 'existing@example.com'
+export const REGISTERED_PASSWORD = 'correct-password'
+
+export const AUTH_RESPONSE: AuthResponse = {
+  token: 'fixture.jwt.token',
+  userId: 1,
+  email: REGISTERED_EMAIL,
+  role: 'TRADER',
+}

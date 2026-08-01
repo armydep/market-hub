@@ -1,7 +1,5 @@
 package com.am.market_hub.common.exception;
 
-import java.time.Instant;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -9,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -39,6 +38,20 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * {@code @PreAuthorize} throws this from inside handler invocation — i.e.
+     * inside {@code DispatcherServlet}'s own exception resolution, which runs
+     * (and fully handles it) before it could ever reach Spring Security's
+     * {@code ExceptionTranslationFilter}/{@code JwtAccessDeniedHandler}.
+     * Without this handler the catch-all below collapses it to 500, since
+     * {@code AccessDeniedException} (and its {@code AuthorizationDeniedException}
+     * subtype) doesn't implement {@link ErrorResponse}.
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Map<String, Object>> handleAccessDenied(AccessDeniedException ex) {
+        return build(HttpStatus.FORBIDDEN, "Access denied", null);
+    }
+
+    /**
      * Catch-all. Spring MVC's own exceptions (unknown route, wrong HTTP method,
      * unreadable body, ...) implement {@link ErrorResponse} and carry a real
      * status code; honor it instead of collapsing every unmapped exception to
@@ -61,14 +74,6 @@ public class GlobalExceptionHandler {
     }
 
     private ResponseEntity<Map<String, Object>> build(HttpStatus status, String message, Object details) {
-        Map<String, Object> body = new HashMap<>();
-        body.put("timestamp", Instant.now().toString());
-        body.put("status", status.value());
-        body.put("error", status.getReasonPhrase());
-        body.put("message", message);
-        if (details != null) {
-            body.put("details", details);
-        }
-        return ResponseEntity.status(status).body(body);
+        return ResponseEntity.status(status).body(ErrorResponseBody.of(status, message, details));
     }
 }

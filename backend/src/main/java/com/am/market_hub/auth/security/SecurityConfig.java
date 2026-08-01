@@ -1,0 +1,65 @@
+package com.am.market_hub.auth.security;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
+import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+/**
+ * Stateless JWT auth. Public: registration/login, the existing public market
+ * reads, actuator, and springdoc. Everything else requires authentication.
+ *
+ * <p>{@code @EnableMethodSecurity} is turned on now (even though nothing in S5
+ * uses {@code @PreAuthorize} yet) so the {@link #roleHierarchy()} bean is
+ * fully wired for the day S11 adds admin-only endpoints.
+ */
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity
+public class SecurityConfig {
+
+    /** The same excluded-path list HttpRequestLoggingFilter already uses, reused for consistency. */
+    private static final String[] PUBLIC_PATHS = {
+            "/actuator/**", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**"
+    };
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public RoleHierarchy roleHierarchy() {
+        return RoleHierarchyImpl.fromHierarchy("ROLE_ADMIN > ROLE_MODERATOR > ROLE_TRADER");
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            JwtService jwtService,
+            JwtAuthenticationEntryPoint entryPoint,
+            JwtAccessDeniedHandler accessDeniedHandler) throws Exception {
+        http
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/auth/register", "/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/market/**").permitAll()
+                        .requestMatchers(PUBLIC_PATHS).permitAll()
+                        .anyRequest().authenticated())
+                .exceptionHandling(handling -> handling
+                        .authenticationEntryPoint(entryPoint)
+                        .accessDeniedHandler(accessDeniedHandler))
+                .addFilterBefore(new JwtAuthFilter(jwtService), UsernamePasswordAuthenticationFilter.class);
+        return http.build();
+    }
+}

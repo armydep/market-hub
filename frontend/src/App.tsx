@@ -1,10 +1,13 @@
 import { QueryClientProvider, type QueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { AppHeader } from './components/AppHeader'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { EmptyState } from './components/States'
 import { CoinDetailPage } from './pages/CoinDetailPage'
 import { DashboardPage } from './pages/DashboardPage'
+import { RegisterPage } from './pages/RegisterPage'
+import { SignInPage } from './pages/SignInPage'
 import { makeQueryClient } from './queryClient'
 import './App.css'
 
@@ -23,11 +26,14 @@ export function App({ queryClient }: Props = {}) {
   return (
     <QueryClientProvider client={client}>
       <div className="app-shell">
+        <AppHeader />
         <main className="app-main">
           <ErrorBoundary>
             <Routes>
               <Route path="/" element={<DashboardPage />} />
               <Route path="/coins/:symbol" element={<CoinDetailPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/sign-in" element={<SignInPage />} />
               <Route
                 path="*"
                 element={<EmptyState title="Page not found" hint="That route doesn't exist." />}
