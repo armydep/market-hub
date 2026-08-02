@@ -78,6 +78,10 @@ Each slice documents the variables it introduces in
 | `MARKET_DEFAULT_PAGE_SIZE` | `20` | Default dashboard page size (must be in the supported list) |
 | `MARKET_SUPPORTED_PAGE_SIZES` | `20,50,100` | Selectable page sizes; any other `size` → 400 |
 | `MARKET_DEFAULT_VISIBLE_COLUMNS` | *(all 10 columns)* | Default visible columns; validated against the column catalog at startup |
+| `JWT_SECRET` | *(dev-only insecure default)* | HMAC signing key for issued JWTs; always set a real one outside dev |
+| `JWT_EXPIRATION_MS` | `86400000` | JWT lifetime (24h) |
+| `ADMIN_EMAIL` | *(empty)* | Seeds the one admin account on startup if no admin exists yet; empty → seed skipped |
+| `ADMIN_PASSWORD` | *(empty)* | Password for the seeded admin account |
 
 ### API documentation (OpenAPI / Swagger)
 - Swagger UI: `http://localhost:8080/api/swagger-ui.html`

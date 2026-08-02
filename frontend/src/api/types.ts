@@ -46,6 +46,14 @@ export interface ColumnCatalog {
   defaultPageSize: number
 }
 
+/** Mirrors com.am.market_hub.auth.dto.AuthResponse — returned by both register and login. */
+export interface AuthResponse {
+  token: string
+  userId: number
+  email: string
+  role: 'TRADER' | 'MODERATOR' | 'ADMIN'
+}
+
 /** The body GlobalExceptionHandler emits for every error. */
 export interface ApiErrorBody {
   timestamp: string

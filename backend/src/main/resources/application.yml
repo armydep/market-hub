@@ -47,6 +47,15 @@ app:
     default-page-size: ${MARKET_DEFAULT_PAGE_SIZE:20}
     supported-page-sizes: ${MARKET_SUPPORTED_PAGE_SIZES:20,50,100}
     default-visible-columns: ${MARKET_DEFAULT_VISIBLE_COLUMNS:marketCapRank,name,symbol,price,pctChange1h,pctChange24h,pctChange7d,marketCap,volume24h,circulatingSupply}
+  jwt:
+    # Dev-only fallback so the app boots with no .env; never used in a real deployment.
+    secret: ${JWT_SECRET:dev-only-insecure-secret-change-me-please-32-bytes-min}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  admin:
+    # Empty by default: the startup seed skips gracefully with no admin configured
+    # (e.g. in tests), mirroring how a missing CMC_API_KEY degrades rather than crashes.
+    email: ${ADMIN_EMAIL:}
+    password: ${ADMIN_PASSWORD:}
 
 logging:
   level:

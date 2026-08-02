@@ -1,6 +1,6 @@
 import { HttpResponse, http } from 'msw'
 import type { Coin } from '../api/types'
-import { CATALOG, COINS, LAST_UPDATED } from './fixtures'
+import { AUTH_RESPONSE, CATALOG, COINS, LAST_UPDATED, REGISTERED_EMAIL, REGISTERED_PASSWORD } from './fixtures'
 
 /**
  * Every /market/coins request the app made, in order. Tests assert against
@@ -49,6 +49,44 @@ export function failNextCoinDetailRequests(count: number) {
 }
 export function resetSymbolFailures() {
   symbolFailuresRemaining = 0
+}
+
+/** Every /auth/register request the app made, in order. */
+export const recordedAuthRegisterRequests: unknown[] = []
+export function lastAuthRegisterRequest(): unknown {
+  const body = recordedAuthRegisterRequests.at(-1)
+  if (!body) throw new Error('No /auth/register request was made')
+  return body
+}
+export function resetRecordedAuthRegisterRequests() {
+  recordedAuthRegisterRequests.length = 0
+}
+
+let authRegisterFailuresRemaining = 0
+export function failNextAuthRegisterRequests(count: number) {
+  authRegisterFailuresRemaining = count
+}
+export function resetAuthRegisterFailures() {
+  authRegisterFailuresRemaining = 0
+}
+
+/** Every /auth/login request the app made, in order. */
+export const recordedAuthLoginRequests: unknown[] = []
+export function lastAuthLoginRequest(): unknown {
+  const body = recordedAuthLoginRequests.at(-1)
+  if (!body) throw new Error('No /auth/login request was made')
+  return body
+}
+export function resetRecordedAuthLoginRequests() {
+  recordedAuthLoginRequests.length = 0
+}
+
+let authLoginFailuresRemaining = 0
+export function failNextAuthLoginRequests(count: number) {
+  authLoginFailuresRemaining = count
+}
+export function resetAuthLoginFailures() {
+  authLoginFailuresRemaining = 0
 }
 
 function compare(a: Coin, b: Coin, field: string): number {
@@ -165,5 +203,58 @@ export const handlers = [
     }
 
     return HttpResponse.json(coin)
+  }),
+
+  http.post('/api/auth/register', async ({ request }) => {
+    const body = (await request.json()) as { email: string; password: string }
+    recordedAuthRegisterRequests.push(body)
+
+    if (authRegisterFailuresRemaining > 0) {
+      authRegisterFailuresRemaining -= 1
+      return HttpResponse.json(
+        { timestamp: new Date().toISOString(), status: 500, error: 'Internal Server Error',
+          message: 'Upstream unavailable' },
+        { status: 500 },
+      )
+    }
+
+    if (body.email.toLowerCase() === REGISTERED_EMAIL.toLowerCase()) {
+      return HttpResponse.json(
+        { timestamp: new Date().toISOString(), status: 409, error: 'Conflict',
+          message: 'Email already registered' },
+        { status: 409 },
+      )
+    }
+
+    return HttpResponse.json(
+      { ...AUTH_RESPONSE, email: body.email.toLowerCase() },
+      { status: 201 },
+    )
+  }),
+
+  http.post('/api/auth/login', async ({ request }) => {
+    const body = (await request.json()) as { email: string; password: string }
+    recordedAuthLoginRequests.push(body)
+
+    if (authLoginFailuresRemaining > 0) {
+      authLoginFailuresRemaining -= 1
+      return HttpResponse.json(
+        { timestamp: new Date().toISOString(), status: 500, error: 'Internal Server Error',
+          message: 'Upstream unavailable' },
+        { status: 500 },
+      )
+    }
+
+    const matches = body.email.toLowerCase() === REGISTERED_EMAIL.toLowerCase()
+      && body.password === REGISTERED_PASSWORD
+    if (!matches) {
+      return HttpResponse.json(
+        { timestamp: new Date().toISOString(), status: 401, error: 'Unauthorized',
+          message: 'Invalid email or password' },
+        { status: 401 },
+      )
+    }
+
+    return HttpResponse.json(AUTH_RESPONSE)
   }),
 ]
