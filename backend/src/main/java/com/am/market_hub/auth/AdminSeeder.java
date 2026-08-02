@@ -1,5 +1,7 @@
 package com.am.market_hub.auth;
 
+import java.util.Locale;
+
 import com.am.market_hub.user.domain.Role;
 import com.am.market_hub.user.domain.User;
 import com.am.market_hub.user.repository.UserRepository;
@@ -51,7 +53,7 @@ public class AdminSeeder implements ApplicationRunner {
             log.warn("No admin account exists and ADMIN_EMAIL/ADMIN_PASSWORD are not configured; skipping seed.");
             return;
         }
-        userRepository.save(User.seedAdmin(adminEmail.toLowerCase(), passwordEncoder.encode(adminPassword)));
+        userRepository.save(User.seedAdmin(adminEmail.toLowerCase(Locale.ROOT), passwordEncoder.encode(adminPassword)));
         log.info("Seeded admin account for {}", adminEmail);
     }
 }

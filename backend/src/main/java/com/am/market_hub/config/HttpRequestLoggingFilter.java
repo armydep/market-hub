@@ -1,8 +1,8 @@
 package com.am.market_hub.config;
 
 import java.io.IOException;
-import java.util.List;
 
+import com.am.market_hub.common.PublicApiPaths;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -24,14 +24,12 @@ public class HttpRequestLoggingFilter extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(HttpRequestLoggingFilter.class);
 
-    private static final List<String> EXCLUDED_PATTERNS = List.of(
-            "/actuator/**", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**");
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI().substring(request.getContextPath().length());
-        return EXCLUDED_PATTERNS.stream().anyMatch(pattern -> PATH_MATCHER.match(pattern, path));
+        return PublicApiPaths.OPERATIONAL.stream().anyMatch(pattern -> PATH_MATCHER.match(pattern, path));
     }
 
     @Override

@@ -36,8 +36,10 @@ describe('RegisterPage', () => {
     await user.type(screen.getByLabelText(/password/i), 'short')
     await user.click(screen.getByRole('button', { name: /^register$/i }))
 
-    // No request should have been sent at all — the browser's own constraint
-    // validation (minLength=8) blocks the submit before onSubmit ever fires.
+    // No request should have been sent at all. This is caught by the
+    // explicit length check in onSubmit, not the input's minLength attribute:
+    // jsdom doesn't enforce native HTML5 constraint validation on submit, so
+    // relying on minLength alone would let this request through under test.
     expect(recordedAuthRegisterRequests).toHaveLength(0)
   })
 })

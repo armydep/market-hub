@@ -1,5 +1,6 @@
 package com.am.market_hub.auth.security;
 
+import com.am.market_hub.common.PublicApiPaths;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -28,11 +29,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
-
-    /** The same excluded-path list HttpRequestLoggingFilter already uses, reused for consistency. */
-    private static final String[] PUBLIC_PATHS = {
-            "/actuator/**", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**"
-    };
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -71,7 +67,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/register", "/auth/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/market/**").permitAll()
-                        .requestMatchers(PUBLIC_PATHS).permitAll()
+                        .requestMatchers(PublicApiPaths.OPERATIONAL.toArray(String[]::new)).permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(handling -> handling
                         .authenticationEntryPoint(entryPoint)

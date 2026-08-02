@@ -91,7 +91,7 @@ class AuthControllerIT {
                 .retrieve().body(AuthResponse.class);
 
         assertThat(response.role()).isEqualTo("TRADER");
-        assertThat(userRepository.findByEmailIgnoreCase(email).orElseThrow().getRole()).isEqualTo(Role.TRADER);
+        assertThat(userRepository.findByEmail(email).orElseThrow().getRole()).isEqualTo(Role.TRADER);
     }
 
     @Test
@@ -168,9 +168,17 @@ class AuthControllerIT {
         String email = "trader-not-admin-" + System.nanoTime() + "@example.com";
         AuthResponse auth = register(email, "password123");
 
-        assertStatus(() -> client().get().uri("/test/admin-only")
-                .header("Authorization", "Bearer " + auth.token())
-                .retrieve().body(String.class), 403);
+        assertThatThrownBy(() -> client().get().uri("/test/admin-only")
+                        .header("Authorization", "Bearer " + auth.token())
+                        .retrieve().body(String.class))
+                .isInstanceOfSatisfying(HttpClientErrorException.class, ex -> {
+                    assertThat(ex.getStatusCode().value()).isEqualTo(403);
+                    // Same envelope-shape proof as the 401 test above: the
+                    // AccessDeniedException handler must produce the standard
+                    // body, not just the right status code.
+                    String body = ex.getResponseBodyAsString();
+                    assertThat(body).contains("\"timestamp\"", "\"status\":403", "\"error\"", "\"message\"");
+                });
     }
 
     @Test
