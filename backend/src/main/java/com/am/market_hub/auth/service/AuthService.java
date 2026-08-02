@@ -75,8 +75,16 @@ public class AuthService {
      * user's lockout state. {@code user} stays managed for the duration of
      * this transaction, so those mutations are picked up by dirty checking —
      * no explicit save() call, unlike register()'s brand-new entity above.
+     *
+     * <p>{@code noRollbackFor = ApiException.class} is required, not
+     * cosmetic: a wrong password mutates {@code failedLoginAttempts}/
+     * {@code lockedUntil} and then throws {@code ApiException.unauthorized}
+     * to report the failure to the caller. {@code ApiException} is
+     * unchecked, so Spring's default rollback-on-unchecked-exception would
+     * otherwise silently discard that exact mutation on every failed
+     * attempt — the one case this method most needs to persist.
      */
-    @Transactional
+    @Transactional(noRollbackFor = ApiException.class)
     public AuthResponse login(LoginRequest request) {
         String email = request.email().toLowerCase(Locale.ROOT);
         Optional<User> maybeUser = userRepository.findByEmail(email);
