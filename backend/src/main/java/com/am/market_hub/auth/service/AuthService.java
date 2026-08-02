@@ -1,5 +1,6 @@
 package com.am.market_hub.auth.service;
 
+import java.time.Duration;
 import java.util.Locale;
 import java.util.Optional;
 
@@ -10,6 +11,7 @@ import com.am.market_hub.auth.security.JwtService;
 import com.am.market_hub.common.exception.ApiException;
 import com.am.market_hub.user.domain.User;
 import com.am.market_hub.user.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,8 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final int maxFailedAttempts;
+    private final Duration lockoutDuration;
 
     /**
      * A real BCrypt hash of an unguessable, never-used password, computed once.
@@ -32,11 +36,18 @@ public class AuthService {
      */
     private final String dummyPasswordHash;
 
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService) {
+    public AuthService(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            JwtService jwtService,
+            @Value("${app.auth.max-failed-attempts}") int maxFailedAttempts,
+            @Value("${app.auth.lockout-duration-minutes}") double lockoutDurationMinutes) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.dummyPasswordHash = passwordEncoder.encode("not-a-real-account-timing-guard");
+        this.maxFailedAttempts = maxFailedAttempts;
+        this.lockoutDuration = Duration.ofMillis((long) (lockoutDurationMinutes * 60_000));
     }
 
     @Transactional
@@ -59,17 +70,40 @@ public class AuthService {
         return toResponse(user);
     }
 
-    @Transactional(readOnly = true)
+    /**
+     * Writable (not read-only): a failed or successful attempt mutates the
+     * user's lockout state. {@code user} stays managed for the duration of
+     * this transaction, so those mutations are picked up by dirty checking —
+     * no explicit save() call, unlike register()'s brand-new entity above.
+     */
+    @Transactional
     public AuthResponse login(LoginRequest request) {
         String email = request.email().toLowerCase(Locale.ROOT);
-        Optional<User> user = userRepository.findByEmail(email);
-        String hashToCheck = user.map(User::getPasswordHash).orElse(dummyPasswordHash);
-        boolean passwordMatches = passwordEncoder.matches(request.password(), hashToCheck);
-        // Same generic message either way: never reveal which part was wrong.
-        if (user.isEmpty() || !passwordMatches) {
+        Optional<User> maybeUser = userRepository.findByEmail(email);
+        if (maybeUser.isEmpty()) {
+            passwordEncoder.matches(request.password(), dummyPasswordHash); // timing guard, see field doc
             throw ApiException.unauthorized("Invalid email or password");
         }
-        return toResponse(user.get());
+        User user = maybeUser.get();
+
+        if (user.isBlocked()) {
+            throw ApiException.forbidden("Account is blocked");
+        }
+        if (user.isLockActive()) {
+            throw ApiException.forbidden("Account temporarily locked, try again later");
+        }
+        if (user.hasExpiredLock()) {
+            // Lazy expiry: an elapsed lock is a fresh start, not a still-guilty state.
+            user.registerSuccessfulLogin();
+        }
+
+        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+            user.registerFailedLogin(maxFailedAttempts, lockoutDuration);
+            // Same generic message as the unknown-email case: never reveal which part was wrong.
+            throw ApiException.unauthorized("Invalid email or password");
+        }
+        user.registerSuccessfulLogin();
+        return toResponse(user);
     }
 
     private AuthResponse toResponse(User user) {

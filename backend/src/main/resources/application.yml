@@ -56,6 +56,11 @@ app:
     # (e.g. in tests), mirroring how a missing CMC_API_KEY degrades rather than crashes.
     email: ${ADMIN_EMAIL:}
     password: ${ADMIN_PASSWORD:}
+  auth:
+    max-failed-attempts: ${AUTH_MAX_FAILED_ATTEMPTS:5}
+    # Minutes, not ms — human-friendly to configure. Bound as a double so tests
+    # can override it to a sub-minute fraction for a fast expiry check.
+    lockout-duration-minutes: ${AUTH_LOCKOUT_DURATION_MINUTES:15}
 
 logging:
   level:

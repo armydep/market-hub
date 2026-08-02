@@ -1,5 +1,6 @@
 package com.am.market_hub.user.domain;
 
+import java.time.Duration;
 import java.time.Instant;
 
 import jakarta.persistence.Column;
@@ -14,9 +15,13 @@ import jakarta.persistence.Table;
 /**
  * A registered account. Guests are never persisted — no anonymous rows exist.
  *
- * <p>{@code blocked}/{@code failedLoginAttempts}/{@code lockedUntil} are
- * mapped now because the table needs its final shape, but nothing reads or
- * writes them until S6 (failed-attempt lockout and administrative blocking).
+ * <p>{@code block()}/{@code unblock()} exist now for S11 (admin user
+ * management) to call, though no admin endpoint invokes them yet — S6's own
+ * tests use them to simulate an administrative block directly, since that's
+ * explicitly out of scope here. {@code failedLoginAttempts} and
+ * {@code lockedUntil} are owned end-to-end by {@link #registerFailedLogin}
+ * and {@link #registerSuccessfulLogin} below, and are deliberately
+ * independent of {@code blocked} — see domain-model.md.
  */
 @Entity
 @Table(name = "users")
@@ -102,5 +107,43 @@ public class User {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    /**
+     * Records a wrong-password attempt. Locks the account once the threshold
+     * is reached; below it, only the counter moves.
+     */
+    public void registerFailedLogin(int maxFailedAttempts, Duration lockoutDuration) {
+        failedLoginAttempts++;
+        if (failedLoginAttempts >= maxFailedAttempts) {
+            lockedUntil = Instant.now().plus(lockoutDuration);
+        }
+    }
+
+    /**
+     * Clears both failed-attempt state fields. Called both on an actual
+     * successful login and, per the S6 spec's resolved "lazy expiry"
+     * decision, when a temporary lock is found to have already elapsed —
+     * the next attempt after that is evaluated as a fresh cycle either way.
+     */
+    public void registerSuccessfulLogin() {
+        failedLoginAttempts = 0;
+        lockedUntil = null;
+    }
+
+    public boolean isLockActive() {
+        return lockedUntil != null && lockedUntil.isAfter(Instant.now());
+    }
+
+    public boolean hasExpiredLock() {
+        return lockedUntil != null && !isLockActive();
+    }
+
+    public void block() {
+        blocked = true;
+    }
+
+    public void unblock() {
+        blocked = false;
     }
 }

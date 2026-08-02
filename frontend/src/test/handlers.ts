@@ -1,6 +1,15 @@
 import { HttpResponse, http } from 'msw'
 import type { Coin } from '../api/types'
-import { AUTH_RESPONSE, CATALOG, COINS, LAST_UPDATED, REGISTERED_EMAIL, REGISTERED_PASSWORD } from './fixtures'
+import {
+  AUTH_RESPONSE,
+  BLOCKED_EMAIL,
+  CATALOG,
+  COINS,
+  LAST_UPDATED,
+  LOCKED_EMAIL,
+  REGISTERED_EMAIL,
+  REGISTERED_PASSWORD,
+} from './fixtures'
 
 /**
  * Every /market/coins request the app made, in order. Tests assert against
@@ -242,6 +251,22 @@ export const handlers = [
         { timestamp: new Date().toISOString(), status: 500, error: 'Internal Server Error',
           message: 'Upstream unavailable' },
         { status: 500 },
+      )
+    }
+
+    if (body.email.toLowerCase() === BLOCKED_EMAIL.toLowerCase()) {
+      return HttpResponse.json(
+        { timestamp: new Date().toISOString(), status: 403, error: 'Forbidden',
+          message: 'Account is blocked' },
+        { status: 403 },
+      )
+    }
+
+    if (body.email.toLowerCase() === LOCKED_EMAIL.toLowerCase()) {
+      return HttpResponse.json(
+        { timestamp: new Date().toISOString(), status: 403, error: 'Forbidden',
+          message: 'Account temporarily locked, try again later' },
+        { status: 403 },
       )
     }
 
