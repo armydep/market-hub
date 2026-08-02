@@ -1,6 +1,7 @@
 package com.am.market_hub.auth.security;
 
 import com.am.market_hub.common.PublicApiPaths;
+import com.am.market_hub.user.repository.UserRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -59,6 +60,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             JwtService jwtService,
+            UserRepository userRepository,
             JwtAuthenticationEntryPoint entryPoint,
             JwtAccessDeniedHandler accessDeniedHandler) throws Exception {
         http
@@ -72,7 +74,7 @@ public class SecurityConfig {
                 .exceptionHandling(handling -> handling
                         .authenticationEntryPoint(entryPoint)
                         .accessDeniedHandler(accessDeniedHandler))
-                .addFilterBefore(new JwtAuthFilter(jwtService), UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(new JwtAuthFilter(jwtService, userRepository), UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 }

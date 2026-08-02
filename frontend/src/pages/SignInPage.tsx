@@ -43,9 +43,12 @@ export function SignInPage() {
           onChange={(event) => setPassword(event.target.value)}
         />
 
-        {login.isError && (
+        {login.error && (
           <p className={styles.error} role="alert">
-            Invalid email or password.
+            {/* 401 (wrong/unknown credentials) always shows this fixed generic
+                copy, never revealing which part was wrong. 403 (blocked or
+                temporarily locked) shows the backend's own distinct message. */}
+            {login.error.status === 401 ? 'Invalid email or password.' : login.error.message}
           </p>
         )}
 

@@ -82,6 +82,8 @@ Each slice documents the variables it introduces in
 | `JWT_EXPIRATION_MS` | `86400000` | JWT lifetime (24h) |
 | `ADMIN_EMAIL` | *(empty)* | Seeds the one admin account on startup if no admin exists yet; empty → seed skipped |
 | `ADMIN_PASSWORD` | *(empty)* | Password for the seeded admin account |
+| `AUTH_MAX_FAILED_ATTEMPTS` | `5` | Consecutive failed sign-ins before a temporary lockout |
+| `AUTH_LOCKOUT_DURATION_MINUTES` | `15` | How long a temporary lockout lasts |
 
 ### API documentation (OpenAPI / Swagger)
 - Swagger UI: `http://localhost:8080/api/swagger-ui.html`

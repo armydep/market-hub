@@ -83,6 +83,10 @@ export const LAST_UPDATED = '2026-07-31T10:00:00Z'
 export const REGISTERED_EMAIL = 'existing@example.com'
 export const REGISTERED_PASSWORD = 'correct-password'
 
+/** Accounts the login handler always rejects with a distinct 403, regardless of password. */
+export const BLOCKED_EMAIL = 'blocked@example.com'
+export const LOCKED_EMAIL = 'locked@example.com'
+
 export const AUTH_RESPONSE: AuthResponse = {
   token: 'fixture.jwt.token',
   userId: 1,
