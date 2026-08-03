@@ -20,11 +20,17 @@ shippable and testable, sized for one focused session, and — from S3 onward �
 | S4 | Asset Details | F-003 | ✅ merged |
 | S5 | Auth core (register / sign in / sign out) | F-004 | ✅ merged |
 | S6 | Sign-in protection + account blocking | F-004 | ✅ merged |
-| S7 | Password reset | F-004 | ⬜ |
-| S8 | Account management + display preferences | F-009, F-001 | ⬜ |
-| S9 | Price alerts + evaluation | F-006 | ⬜ |
-| S10 | Notifications | F-007 | 🔄 in review |
-| S11 | Admin user management + audit | F-010 | 🔄 in review |
+| S7 | Password reset | F-004 | ✅ merged |
+| S8 | Account management + display preferences | F-009, F-001 | ✅ merged |
+| S9 | Price alerts + evaluation | F-006 | ✅ merged |
+| S10 | Notifications | F-007 | ✅ merged |
+| S11 | Admin user management + audit | F-010 | ✅ merged |
+
+**Phase 1 complete.** S0–S11 are all merged, delivering every Phase 1 Must/Should Have PRD feature
+(F-001 through F-010). Remaining PRD open questions (OQ-009 latency/concurrency/availability targets,
+OQ-010 retention) have no agreed numbers yet and don't block any shipped behavior; see
+`constraints.md`'s "Non-inferable constraints" section for the full list of provisional defaults
+still awaiting confirmation.
 
 **Dependency graph**
 
