@@ -6,7 +6,7 @@
 CREATE TABLE price_alerts (
     id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id         BIGINT         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    symbol          VARCHAR(20)    NOT NULL,
+    symbol          VARCHAR(32)    NOT NULL,
     condition       VARCHAR(20)    NOT NULL,
     target_price    NUMERIC(30,10) NOT NULL,
     active          BOOLEAN        NOT NULL DEFAULT true,
