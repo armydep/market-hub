@@ -16,7 +16,6 @@ import com.am.market_hub.user.dto.UpdatePreferencesRequest;
 import com.am.market_hub.user.repository.UserPreferenceRepository;
 import com.am.market_hub.user.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -71,14 +70,11 @@ public class AccountService {
         if (!newEmail.equals(user.getEmail()) && userRepository.findByEmail(newEmail).isPresent()) {
             throw ApiException.conflict("Email already registered");
         }
-        try {
-            user.changeEmail(newEmail);
-        } catch (DataIntegrityViolationException e) {
-            // Same non-atomicity as AuthService.register: the existence check
-            // above isn't atomic with the update, so the unique constraint is
-            // the real guard against two concurrent changes to the same email.
-            throw ApiException.conflict("Email already registered");
-        }
+        // A concurrent race past this check surfaces at transaction commit (this
+        // is a managed-entity update, not a fresh IDENTITY insert, so there's no
+        // local flush to catch it against) and is handled by
+        // GlobalExceptionHandler's DataIntegrityViolationException mapping.
+        user.changeEmail(newEmail);
         return AccountResponse.from(user);
     }
 
