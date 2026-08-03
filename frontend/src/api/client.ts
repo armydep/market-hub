@@ -1,5 +1,7 @@
 import {
   ApiError,
+  type Account,
+  type AccountPreferences,
   type AdminUser,
   type AdminUserPage,
   type AlertCondition,
@@ -77,6 +79,26 @@ export async function patchJson<T>(
 ): Promise<T> {
   const response = await fetch(`${BASE}${path}`, {
     method: 'PATCH',
+    signal,
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      ...authHeader(token),
+    },
+    body: JSON.stringify(body),
+  })
+  await throwIfError(response)
+  return (await response.json()) as T
+}
+
+export async function putJson<T>(
+  path: string,
+  body: unknown,
+  signal?: AbortSignal,
+  token?: string,
+): Promise<T> {
+  const response = await fetch(`${BASE}${path}`, {
+    method: 'PUT',
     signal,
     headers: {
       Accept: 'application/json',
@@ -214,4 +236,52 @@ export function deleteAlert(id: number, token: string, signal?: AbortSignal): Pr
 
 export function clearAlert(id: number, token: string, signal?: AbortSignal): Promise<PriceAlert> {
   return postJson<PriceAlert>(`/alerts/${id}/clear`, {}, signal, token)
+}
+
+export function fetchAccount(token: string, signal?: AbortSignal): Promise<Account> {
+  return getJson<Account>('/account', signal, token)
+}
+
+export interface UpdateAccountInput {
+  email: string
+  currentPassword: string
+}
+
+export function updateAccount(body: UpdateAccountInput, token: string, signal?: AbortSignal): Promise<Account> {
+  return patchJson<Account>('/account', body, signal, token)
+}
+
+export interface ChangePasswordInput {
+  currentPassword: string
+  newPassword: string
+}
+
+export async function changePassword(
+  body: ChangePasswordInput,
+  token: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  const response = await fetch(`${BASE}/account/password`, {
+    method: 'POST',
+    signal,
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      ...authHeader(token),
+    },
+    body: JSON.stringify(body),
+  })
+  await throwIfError(response)
+}
+
+export function fetchAccountPreferences(token: string, signal?: AbortSignal): Promise<AccountPreferences> {
+  return getJson<AccountPreferences>('/account/preferences', signal, token)
+}
+
+export function updateAccountPreferences(
+  visibleColumns: string[],
+  token: string,
+  signal?: AbortSignal,
+): Promise<AccountPreferences> {
+  return putJson<AccountPreferences>('/account/preferences', { visibleColumns }, signal, token)
 }

@@ -5,6 +5,7 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -49,6 +50,20 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Map<String, Object>> handleAccessDenied(AccessDeniedException ex) {
         return build(HttpStatus.FORBIDDEN, "Access denied", null);
+    }
+
+    /**
+     * Safety net for a unique-constraint race the caller's own pre-check can't
+     * always catch: a JPA update on an already-managed entity (unlike a brand-new
+     * {@code IDENTITY} insert) defers its flush to transaction commit, which
+     * happens after a local {@code try/catch} in the service method has already
+     * gone out of scope — see {@code AccountService.updateAccount}. Without this
+     * handler that race falls through to the generic 500 below instead of a
+     * clean 409.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+        return build(HttpStatus.CONFLICT, "The request conflicts with existing data", null);
     }
 
     /**

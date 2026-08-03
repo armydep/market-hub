@@ -1,6 +1,7 @@
 import { HttpResponse, http } from 'msw'
-import type { AdminUser, AlertCondition, Coin, PriceAlert } from '../api/types'
+import type { Account, AdminUser, AlertCondition, Coin, PriceAlert } from '../api/types'
 import {
+  ACCOUNT,
   ACTIVE_ALERT,
   ADMIN_USERS,
   AUTH_RESPONSE,
@@ -9,6 +10,7 @@ import {
   COINS,
   LAST_UPDATED,
   LOCKED_EMAIL,
+  OTHER_REGISTERED_EMAIL,
   PASSWORD_RESET_CONFIRM_MESSAGE,
   PASSWORD_RESET_REQUEST_MESSAGE,
   REGISTERED_EMAIL,
@@ -124,6 +126,22 @@ let nextAlertId = 200
 export function resetAlerts() {
   alerts = [{ ...ACTIVE_ALERT }, { ...TRIGGERED_ALERT }]
   nextAlertId = 200
+}
+
+/**
+ * A mutable working copy of ACCOUNT plus a "current password" the account/
+ * password handlers check against, mirroring the admin-users mutable-array
+ * pattern: a test needs to see the row actually change without mutating the
+ * shared fixture itself.
+ */
+let account: Account = { ...ACCOUNT }
+let currentPassword = REGISTERED_PASSWORD
+/** null = never saved; falls back to CATALOG.defaultVisible, mirroring the real endpoint. */
+let savedPreferences: string[] | null = null
+export function resetAccount() {
+  account = { ...ACCOUNT }
+  currentPassword = REGISTERED_PASSWORD
+  savedPreferences = null
 }
 
 /** Mirrors com.am.market_hub.alert.domain.AlertCondition#isSatisfiedBy. */
@@ -303,8 +321,11 @@ export const handlers = [
       )
     }
 
-    const matches = body.email.toLowerCase() === REGISTERED_EMAIL.toLowerCase()
-      && body.password === REGISTERED_PASSWORD
+    // Checked against the mutable account/currentPassword state, not the fixed
+    // constants, so the S8 email/password-change handlers below can be
+    // verified end-to-end by logging in again afterward.
+    const matches = body.email.toLowerCase() === account.email.toLowerCase()
+      && body.password === currentPassword
     if (!matches) {
       return HttpResponse.json(
         { timestamp: new Date().toISOString(), status: 401, error: 'Unauthorized',
@@ -464,5 +485,58 @@ export const handlers = [
     }
     alert.clearedAt = new Date().toISOString()
     return HttpResponse.json(alert)
+  }),
+
+  http.get('/api/account', () => HttpResponse.json(account)),
+
+  http.patch('/api/account', async ({ request }) => {
+    const body = (await request.json()) as { email: string; currentPassword: string }
+    if (body.currentPassword !== currentPassword) {
+      return HttpResponse.json(
+        { timestamp: new Date().toISOString(), status: 400, error: 'Bad Request',
+          message: 'Current password is incorrect' },
+        { status: 400 },
+      )
+    }
+    if (body.email.toLowerCase() === OTHER_REGISTERED_EMAIL.toLowerCase()) {
+      return HttpResponse.json(
+        { timestamp: new Date().toISOString(), status: 409, error: 'Conflict',
+          message: 'Email already registered' },
+        { status: 409 },
+      )
+    }
+    account = { ...account, email: body.email.toLowerCase() }
+    return HttpResponse.json(account)
+  }),
+
+  http.post('/api/account/password', async ({ request }) => {
+    const body = (await request.json()) as { currentPassword: string; newPassword: string }
+    if (body.currentPassword !== currentPassword) {
+      return HttpResponse.json(
+        { timestamp: new Date().toISOString(), status: 400, error: 'Bad Request',
+          message: 'Current password is incorrect' },
+        { status: 400 },
+      )
+    }
+    currentPassword = body.newPassword
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  http.get('/api/account/preferences', () =>
+    HttpResponse.json({ visibleColumns: savedPreferences ?? CATALOG.defaultVisible }),
+  ),
+
+  http.put('/api/account/preferences', async ({ request }) => {
+    const body = (await request.json()) as { visibleColumns: string[] }
+    const unknown = body.visibleColumns.filter((key) => !CATALOG.supported.includes(key))
+    if (unknown.length > 0) {
+      return HttpResponse.json(
+        { timestamp: new Date().toISOString(), status: 400, error: 'Bad Request',
+          message: `Unknown column key(s): ${unknown.join(', ')}` },
+        { status: 400 },
+      )
+    }
+    savedPreferences = body.visibleColumns
+    return HttpResponse.json({ visibleColumns: savedPreferences })
   }),
 ]

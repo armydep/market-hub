@@ -1,4 +1,4 @@
-import type { AdminUser, AuthResponse, Coin, ColumnCatalog, PriceAlert } from '../api/types'
+import type { Account, AdminUser, AuthResponse, Coin, ColumnCatalog, PriceAlert } from '../api/types'
 
 export const CATALOG: ColumnCatalog = {
   supported: [
@@ -93,6 +93,17 @@ export const AUTH_RESPONSE: AuthResponse = {
   email: REGISTERED_EMAIL,
   role: 'TRADER',
 }
+
+/** The signed-in account behind AUTH_RESPONSE, for the S8 account-page tests. */
+export const ACCOUNT: Account = {
+  id: 1,
+  email: REGISTERED_EMAIL,
+  role: 'TRADER',
+  createdAt: '2026-07-01T10:00:00Z',
+}
+
+/** Already registered, for the S8 email-change-conflict (409) test. */
+export const OTHER_REGISTERED_EMAIL = 'taken@example.com'
 
 /** A signed-in administrator, for the S11 admin-page tests. */
 export const ADMIN_AUTH_RESPONSE: AuthResponse = {

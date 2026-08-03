@@ -92,6 +92,19 @@ export interface PriceAlert {
   createdAt: string
 }
 
+/** Mirrors com.am.market_hub.user.dto.AccountResponse. */
+export interface Account {
+  id: number
+  email: string
+  role: 'TRADER' | 'MODERATOR' | 'ADMIN'
+  createdAt: string
+}
+
+/** Mirrors com.am.market_hub.user.dto.PreferencesResponse. */
+export interface AccountPreferences {
+  visibleColumns: string[]
+}
+
 /** The body GlobalExceptionHandler emits for every error. */
 export interface ApiErrorBody {
   timestamp: string

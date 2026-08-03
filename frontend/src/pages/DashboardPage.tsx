@@ -3,9 +3,12 @@ import { CoinGrid } from '../components/CoinGrid'
 import { DashboardToolbar } from '../components/DashboardToolbar'
 import { Pagination } from '../components/Pagination'
 import { EmptyState, FatalError, LoadingState, RefreshFailureBanner } from '../components/States'
+import { useAccountPreferences } from '../hooks/useAccountPreferences'
 import { useCoins } from '../hooks/useCoins'
 import { useColumnCatalog } from '../hooks/useColumnCatalog'
 import { useDashboardParams } from '../hooks/useDashboardParams'
+import { useUpdateAccountPreferences } from '../hooks/useUpdateAccountPreferences'
+import { useAuthStore } from '../store/authStore'
 import { resolveVisibleColumns, useColumnsStore } from '../store/columnsStore'
 import styles from './DashboardPage.module.css'
 
@@ -20,8 +23,24 @@ export function DashboardPage() {
   )
   const coins = useCoins(params, catalog.isSuccess)
 
-  const chosenColumns = useColumnsStore((s) => s.visibleColumns)
-  const toggleColumn = useColumnsStore((s) => s.toggleColumn)
+  const isSignedIn = useAuthStore((s) => s.token) !== null
+  const guestChosenColumns = useColumnsStore((s) => s.visibleColumns)
+  const guestToggleColumn = useColumnsStore((s) => s.toggleColumn)
+  const accountPreferences = useAccountPreferences()
+  const updateAccountPreferences = useUpdateAccountPreferences()
+
+  // Registered users persist their choice server-side (F009-FR-004); guests
+  // keep S3's client-only Zustand+persist behavior untouched.
+  const chosenColumns = isSignedIn ? (accountPreferences.data?.visibleColumns ?? null) : guestChosenColumns
+  const toggleColumn = (key: string, serverDefault: string[]) => {
+    if (!isSignedIn) {
+      guestToggleColumn(key, serverDefault)
+      return
+    }
+    const current = chosenColumns ?? serverDefault
+    const next = current.includes(key) ? current.filter((c) => c !== key) : [...current, key]
+    updateAccountPreferences.mutate(next)
+  }
 
   // Stable identities: DashboardToolbar debounces the search and lists its
   // handler in the effect deps, so an inline arrow would restart the 300ms

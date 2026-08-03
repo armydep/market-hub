@@ -150,4 +150,9 @@ public class User {
     public void changePassword(String newPasswordHash) {
         passwordHash = newPasswordHash;
     }
+
+    /** Caller passes an already-lowercased, already uniqueness-checked email (see AccountService). */
+    public void changeEmail(String newEmail) {
+        email = newEmail;
+    }
 }
