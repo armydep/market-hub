@@ -37,7 +37,7 @@ sequenceDiagram
   participant DB as Postgres (users)
   participant Ctrl as Controller
 
-  SPA->>Filter: request + Authorization: Bearer <jwt>
+  SPA->>Filter: request + Authorization: Bearer JWT
   Filter->>Filter: JwtService.parse(token)
   alt invalid or expired
     Filter-->>SPA: 401 (JwtAuthenticationEntryPoint)
