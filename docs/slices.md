@@ -20,11 +20,11 @@ shippable and testable, sized for one focused session, and — from S3 onward �
 | S4 | Asset Details | F-003 | ✅ merged |
 | S5 | Auth core (register / sign in / sign out) | F-004 | ✅ merged |
 | S6 | Sign-in protection + account blocking | F-004 | ✅ merged |
-| S7 | Password reset | F-004 | ⬜ |
+| S7 | Password reset | F-004 | ✅ merged |
 | S8 | Account management + display preferences | F-009, F-001 | ⬜ |
-| S9 | Price alerts + evaluation | F-006 | ⬜ |
+| S9 | Price alerts + evaluation | F-006 | ✅ merged |
 | S10 | Notifications | F-007 | ⬜ |
-| S11 | Admin user management + audit | F-010 | 🔄 in review |
+| S11 | Admin user management + audit | F-010 | ✅ merged |
 
 **Dependency graph**
 
