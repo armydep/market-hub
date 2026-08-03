@@ -84,6 +84,7 @@ Each slice documents the variables it introduces in
 | `ADMIN_PASSWORD` | *(empty)* | Password for the seeded admin account |
 | `AUTH_MAX_FAILED_ATTEMPTS` | `5` | Consecutive failed sign-ins before a temporary lockout |
 | `AUTH_LOCKOUT_DURATION_MINUTES` | `15` | How long a temporary lockout lasts |
+| `PASSWORD_RESET_TOKEN_LIFETIME_MINUTES` | `60` | How long a password-reset token stays valid |
 
 ### API documentation (OpenAPI / Swagger)
 - Swagger UI: `http://localhost:8080/api/swagger-ui.html`

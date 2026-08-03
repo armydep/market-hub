@@ -8,8 +8,11 @@ import {
   COINS,
   LAST_UPDATED,
   LOCKED_EMAIL,
+  PASSWORD_RESET_CONFIRM_MESSAGE,
+  PASSWORD_RESET_REQUEST_MESSAGE,
   REGISTERED_EMAIL,
   REGISTERED_PASSWORD,
+  VALID_RESET_TOKEN,
 } from './fixtures'
 
 /**
@@ -332,5 +335,19 @@ export const handlers = [
     }
     user.blocked = false
     return HttpResponse.json(user)
+  }),
+
+  http.post('/api/auth/password-reset/request', () => HttpResponse.json({ message: PASSWORD_RESET_REQUEST_MESSAGE })),
+
+  http.post('/api/auth/password-reset/confirm', async ({ request }) => {
+    const body = (await request.json()) as { token: string; newPassword: string }
+    if (body.token !== VALID_RESET_TOKEN) {
+      return HttpResponse.json(
+        { timestamp: new Date().toISOString(), status: 400, error: 'Bad Request',
+          message: 'Invalid or expired token' },
+        { status: 400 },
+      )
+    }
+    return HttpResponse.json({ message: PASSWORD_RESET_CONFIRM_MESSAGE })
   }),
 ]

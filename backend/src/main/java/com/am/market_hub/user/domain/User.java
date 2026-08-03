@@ -146,4 +146,8 @@ public class User {
     public void unblock() {
         blocked = false;
     }
+
+    public void changePassword(String newPasswordHash) {
+        passwordHash = newPasswordHash;
+    }
 }

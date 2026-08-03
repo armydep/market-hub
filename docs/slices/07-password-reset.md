@@ -42,7 +42,10 @@ time-limited, and single-use.
   status, same generic message) whether or not the email belongs to a registered account — no
   account-enumeration channel. When the account exists: invalidate any prior unused token for that
   user (resolved Q2), generate a new unpredictable token, store only its hash with a 60-minute
-  expiry, and hand the raw token to `EmailSender` (which logs it by default).
+  expiry, and hand the raw token to `EmailSender` — the default implementation logs that a reset
+  was requested, but **never the token itself** (see Architecture decisions: PRD §3.8 names
+  password-reset tokens specifically as something that must not appear in logs, with no carve-out
+  for the case where no real provider is configured yet).
 - `POST /api/auth/password-reset/confirm` — body `{token, newPassword}`. Looks the token up by its
   hash; rejects (400) if not found, already used, or expired. On success: updates the user's
   `passwordHash` (same `PasswordEncoder`/validation rule as registration — minimum 8 characters),
@@ -94,22 +97,41 @@ time-limited, and single-use.
 - **A successful reset clears the S6 lockout state** (`lockedUntil`/`failedLoginAttempts` reset),
   mirroring the existing "reset to 0 on a successful login" rule — proving account ownership via a
   valid reset token is at least as strong evidence as a correct password.
-- **No email-existence oracle.** The request endpoint's response is identical either way (same
-  status, same body) — this is the same pattern `AuthService.login()` already uses for the
-  wrong-password-vs-unknown-email case, applied to a second endpoint.
+- **No email-existence oracle, including in response timing.** The request endpoint's response is
+  identical either way (same status, same body) — the same pattern `AuthService.login()` already
+  uses for the wrong-password-vs-unknown-email case — and the no-match code path does the same
+  shape of DB work as the match path (a lookup-by-user-id query, token generation, and hashing),
+  mirroring `AuthService`'s dummy-hash timing guard, so response latency doesn't leak the answer
+  either.
+- **The `EmailSender` call never runs inside the DB transaction.** The token is committed first
+  (via `TransactionTemplate`, not a method-level `@Transactional`), and the send happens after —
+  same discipline `constraints.md` already requires for the poller's provider call, so a slow or
+  hung send can never hold a DB connection open.
+- **The default `EmailSender` never logs the raw token, ever.** PRD §3.8 names password-reset
+  tokens specifically as something that must not appear in logs, with no exception for "no real
+  provider is configured yet." That makes the logging default genuinely non-functional for
+  completing an actual reset — the same way a missing `CMC_API_KEY` makes the poller serve an
+  empty universe instead of real data, rather than logging real data insecurely. A working reset
+  flow requires a real `EmailSender` (PRD OQ-007); the automated test suite uses an in-memory
+  recording stub instead of reading logs.
+- **Known, accepted Phase-1 limitation: a reset does not invalidate already-issued JWTs.**
+  Authorization is otherwise stateless (only `blocked` is rechecked per request, per
+  domain-model.md), so a session token issued before a reset stays valid until its normal expiry.
+  Closing this would need a `passwordChangedAt` claim check in `JwtAuthFilter` plus a new
+  migration — large enough to be its own decision, not a quiet addition here.
 
 ## Acceptance criteria
 
 - [ ] A user can request a reset for their own email and, following the link/token delivered via
-      `EmailSender` (logged in Phase 1), set a new password.
-- [ ] The request endpoint responds identically for a registered and an unregistered email.
+      `EmailSender`, set a new password.
+- [ ] The request endpoint responds identically (status, body, and — as closely as practical —
+      timing) for a registered and an unregistered email.
 - [ ] An expired token is rejected on confirm.
 - [ ] A token already used once is rejected on a second confirm attempt.
 - [ ] Requesting a second reset invalidates the first token; only the newest one works.
 - [ ] After a successful reset, the old password no longer works and the new one does.
 - [ ] A successful reset clears any active temporary lockout from S6.
-- [ ] Reset tokens (raw or hashed) never appear in application logs beyond the deliberate
-      `EmailSender` logging line that stands in for actually sending the email.
+- [ ] The raw reset token never appears in any application log, under any configuration.
 
 ## Test plan
 

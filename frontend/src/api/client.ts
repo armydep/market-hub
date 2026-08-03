@@ -7,6 +7,7 @@ import {
   type Coin,
   type CoinPage,
   type ColumnCatalog,
+  type PasswordResetResponse,
 } from './types'
 
 /**
@@ -125,4 +126,16 @@ export function blockUser(id: number, token: string, signal?: AbortSignal): Prom
 
 export function unblockUser(id: number, token: string, signal?: AbortSignal): Promise<AdminUser> {
   return postJson<AdminUser>(`/admin/users/${id}/unblock`, {}, signal, token)
+}
+
+export function requestPasswordReset(email: string, signal?: AbortSignal): Promise<PasswordResetResponse> {
+  return postJson<PasswordResetResponse>('/auth/password-reset/request', { email }, signal)
+}
+
+export function confirmPasswordReset(
+  token: string,
+  newPassword: string,
+  signal?: AbortSignal,
+): Promise<PasswordResetResponse> {
+  return postJson<PasswordResetResponse>('/auth/password-reset/confirm', { token, newPassword }, signal)
 }

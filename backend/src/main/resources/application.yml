@@ -61,6 +61,7 @@ app:
     # Minutes, not ms — human-friendly to configure. Bound as a double so tests
     # can override it to a sub-minute fraction for a fast expiry check.
     lockout-duration-minutes: ${AUTH_LOCKOUT_DURATION_MINUTES:15}
+    password-reset-token-lifetime-minutes: ${PASSWORD_RESET_TOKEN_LIFETIME_MINUTES:60}
 
 logging:
   level:

@@ -8,7 +8,9 @@ import { EmptyState } from './components/States'
 import { AdminUsersPage } from './pages/AdminUsersPage'
 import { CoinDetailPage } from './pages/CoinDetailPage'
 import { DashboardPage } from './pages/DashboardPage'
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { RegisterPage } from './pages/RegisterPage'
+import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { SignInPage } from './pages/SignInPage'
 import { makeQueryClient } from './queryClient'
 import './App.css'
@@ -36,6 +38,8 @@ export function App({ queryClient }: Props = {}) {
               <Route path="/coins/:symbol" element={<CoinDetailPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/sign-in" element={<SignInPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route
                 path="/admin/users"
                 element={

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useLogin } from '../hooks/useLogin'
 import styles from './SignInPage.module.css'
 
@@ -55,6 +55,10 @@ export function SignInPage() {
         <button type="submit" className={styles.submit} disabled={login.isPending}>
           {login.isPending ? 'Signing in…' : 'Sign in'}
         </button>
+
+        <Link to="/forgot-password" className={styles.forgotPassword}>
+          Forgot password?
+        </Link>
       </form>
     </section>
   )
