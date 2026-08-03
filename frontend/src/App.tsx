@@ -11,6 +11,7 @@ import { AlertsPage } from './pages/AlertsPage'
 import { CoinDetailPage } from './pages/CoinDetailPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
+import { NotificationsPage } from './pages/NotificationsPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { SignInPage } from './pages/SignInPage'
@@ -55,6 +56,14 @@ export function App({ queryClient }: Props = {}) {
                 element={
                   <RequireAuth>
                     <AccountPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/notifications"
+                element={
+                  <RequireAuth>
+                    <NotificationsPage />
                   </RequireAuth>
                 }
               />

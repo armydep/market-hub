@@ -1,4 +1,12 @@
-import type { Account, AdminUser, AuthResponse, Coin, ColumnCatalog, PriceAlert } from '../api/types'
+import type {
+  Account,
+  AdminUser,
+  AlertNotification,
+  AuthResponse,
+  Coin,
+  ColumnCatalog,
+  PriceAlert,
+} from '../api/types'
 
 export const CATALOG: ColumnCatalog = {
   supported: [
@@ -154,4 +162,14 @@ export const TRIGGERED_ALERT: PriceAlert = {
   triggeredPrice: 2400,
   clearedAt: null,
   createdAt: '2026-07-29T10:00:00Z',
+}
+
+/** One visible notification, for the S10 notifications-page and header-badge tests. */
+export const NOTIFICATION: AlertNotification = {
+  id: 200,
+  symbol: 'ETH',
+  condition: 'BELOW_OR_EQUAL',
+  targetPrice: 2500,
+  triggeredPrice: 2400,
+  triggeredAt: '2026-07-31T09:00:00Z',
 }

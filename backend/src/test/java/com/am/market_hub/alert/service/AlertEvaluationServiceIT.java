@@ -21,6 +21,8 @@ import com.am.market_hub.alert.dto.AlertResponse;
 import com.am.market_hub.alert.repository.AlertRepository;
 import com.am.market_hub.auth.dto.AuthResponse;
 import com.am.market_hub.market.service.CryptoPoller;
+import com.am.market_hub.notification.domain.Notification;
+import com.am.market_hub.notification.repository.NotificationRepository;
 import com.am.market_hub.support.StubPriceProvider;
 import com.am.market_hub.support.StubProviderConfig;
 import com.am.market_hub.support.TestcontainersConfig;
@@ -43,6 +45,8 @@ class AlertEvaluationServiceIT {
     private CryptoPoller poller;
     @Autowired
     private AlertRepository alertRepository;
+    @Autowired
+    private NotificationRepository notificationRepository;
 
     private RestClient client;
 
@@ -130,5 +134,41 @@ class AlertEvaluationServiceIT {
 
         assertThat(alertRepository.findById(first.id()).orElseThrow().isActive()).isFalse();
         assertThat(alertRepository.findById(second.id()).orElseThrow().isActive()).isFalse();
+    }
+
+    @Test
+    void oneAlertsConstraintViolationDoesNotBlockAnotherLegitimateAlertInTheSameCycle() {
+        String token = registerAndGetToken("eval-isolation-" + System.nanoTime() + "@example.com");
+        AlertResponse conflicting = createAlert(token, "BTC", "ABOVE_OR_EQUAL", "150");
+        AlertResponse legitimate = createAlert(token, "BTC", "ABOVE_OR_EQUAL", "180");
+
+        // Simulate a pre-existing notification for `conflicting`'s alert_id, as
+        // if it had already fired and been notified once but its `active` flag
+        // was somehow never cleared — the exact inconsistency that would make
+        // the real evaluation path's insert collide with the real UNIQUE
+        // constraint. The mutation below is never persisted back to
+        // price_alerts (this detached snapshot is only used to build the
+        // Notification), so `conflicting` genuinely still reads active=true
+        // going into the real poll cycle below.
+        PriceAlert conflictingSnapshot = alertRepository.findById(conflicting.id()).orElseThrow();
+        conflictingSnapshot.trigger(new BigDecimal("999"));
+        notificationRepository.save(Notification.from(conflictingSnapshot));
+
+        stub.setQuotes(List.of(
+                StubPriceProvider.quote(1, "BTC", 1, "200"),
+                StubPriceProvider.quote(2, "ETH", 2, "50")));
+        poller.pollOnce();
+
+        // The conflicting alert's own trigger attempt failed (caught, logged,
+        // and rolled back in its own transaction) and is left untouched...
+        PriceAlert conflictingAfter = alertRepository.findById(conflicting.id()).orElseThrow();
+        assertThat(conflictingAfter.isActive()).isTrue();
+        assertThat(conflictingAfter.getTriggeredAt()).isNull();
+
+        // ...while the other, legitimate alert in the same cycle still fired,
+        // proving one alert's constraint violation didn't roll back the batch.
+        PriceAlert legitimateAfter = alertRepository.findById(legitimate.id()).orElseThrow();
+        assertThat(legitimateAfter.isActive()).isFalse();
+        assertThat(legitimateAfter.getTriggeredPrice()).isEqualByComparingTo("200");
     }
 }

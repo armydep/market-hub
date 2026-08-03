@@ -5,6 +5,7 @@ import {
   type AdminUser,
   type AdminUserPage,
   type AlertCondition,
+  type AlertNotification,
   type ApiErrorBody,
   type AuthResponse,
   type Coin,
@@ -284,4 +285,16 @@ export function updateAccountPreferences(
   signal?: AbortSignal,
 ): Promise<AccountPreferences> {
   return putJson<AccountPreferences>('/account/preferences', { visibleColumns }, signal, token)
+}
+
+export function fetchNotifications(token: string, signal?: AbortSignal): Promise<AlertNotification[]> {
+  return getJson<AlertNotification[]>('/notifications', signal, token)
+}
+
+export function clearNotification(
+  id: number,
+  token: string,
+  signal?: AbortSignal,
+): Promise<AlertNotification> {
+  return postJson<AlertNotification>(`/notifications/${id}/clear`, {}, signal, token)
 }

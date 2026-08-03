@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { CONDITIONS, conditionLabel } from '../alertConditions'
 import type { AlertCondition } from '../api/types'
 import { ApiError, type PriceAlert } from '../api/types'
 import { EmptyState, FatalError, LoadingState } from '../components/States'
@@ -9,15 +10,6 @@ import { useDeleteAlert } from '../hooks/useDeleteAlert'
 import { useTriggeredAlerts } from '../hooks/useTriggeredAlerts'
 import { useUpdateAlert } from '../hooks/useUpdateAlert'
 import styles from './AlertsPage.module.css'
-
-const CONDITIONS: { value: AlertCondition; label: string }[] = [
-  { value: 'ABOVE_OR_EQUAL', label: 'At or above' },
-  { value: 'BELOW_OR_EQUAL', label: 'At or below' },
-]
-
-function conditionLabel(condition: AlertCondition): string {
-  return CONDITIONS.find((c) => c.value === condition)?.label ?? condition
-}
 
 /** One-time above/below price alerts (PRD F-006). Registered users only. */
 export function AlertsPage() {

@@ -12,6 +12,7 @@ import {
   resetAuthLoginFailures,
   resetAuthRegisterFailures,
   resetFailures,
+  resetNotifications,
   resetRecordedAuthLoginRequests,
   resetRecordedAuthRegisterRequests,
   resetRecordedRequests,
@@ -37,6 +38,7 @@ afterEach(() => {
   resetAdminUsers()
   resetAlerts()
   resetAccount()
+  resetNotifications()
   // The Zustand stores are created at module scope and hydrated once per test
   // *file*, so clearing localStorage alone resets nothing — the in-memory
   // state is authoritative and leaks into the next test. Without this reset
