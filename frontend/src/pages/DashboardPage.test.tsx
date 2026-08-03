@@ -7,8 +7,9 @@ import { HttpResponse, http } from 'msw'
 import { describe, expect, it, vi } from 'vitest'
 import { formatTimestamp } from '../format'
 import { REFRESH_INTERVAL_MS } from '../hooks/useCoins'
+import { useAuthStore } from '../store/authStore'
 import { useColumnsStore } from '../store/columnsStore'
-import { LAST_UPDATED } from '../test/fixtures'
+import { AUTH_RESPONSE, LAST_UPDATED } from '../test/fixtures'
 import { failNextCoinRequests, lastRequest, recordedRequests } from '../test/handlers'
 import { renderApp } from '../test/renderApp'
 import { server } from '../test/setup'
@@ -341,6 +342,26 @@ describe('Public Market Dashboard', () => {
       localStorage.setItem('market-hub.columns', persisted!)
       await useColumnsStore.persist.rehydrate()
 
+      renderApp()
+      await screen.findByRole('table')
+      await waitFor(() => expect(screen.getAllByRole('columnheader')).toHaveLength(4))
+    })
+
+    it('persists a signed-in user\'s column choice server-side and survives a remount (F009-FR-004)', async () => {
+      useAuthStore.getState().signIn(AUTH_RESPONSE)
+      const { user, unmount } = renderApp()
+      await screen.findByRole('table')
+      expect(screen.getAllByRole('columnheader')).toHaveLength(5)
+
+      await user.click(screen.getByRole('button', { name: /5 of 10/i }))
+      await user.click(screen.getByRole('checkbox', { name: /24h %/i }))
+
+      await waitFor(() => expect(screen.getAllByRole('columnheader')).toHaveLength(4))
+
+      // A real remount (not a reload), so this proves the choice survived via
+      // the mocked server's own state, not via localStorage/Zustand — the
+      // guest store is a different store entirely.
+      unmount()
       renderApp()
       await screen.findByRole('table')
       await waitFor(() => expect(screen.getAllByRole('columnheader')).toHaveLength(4))

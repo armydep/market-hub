@@ -5,6 +5,7 @@ import { AppHeader } from './components/AppHeader'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { RequireAuth } from './components/RequireAuth'
 import { EmptyState } from './components/States'
+import { AccountPage } from './pages/AccountPage'
 import { AdminUsersPage } from './pages/AdminUsersPage'
 import { AlertsPage } from './pages/AlertsPage'
 import { CoinDetailPage } from './pages/CoinDetailPage'
@@ -46,6 +47,14 @@ export function App({ queryClient }: Props = {}) {
                 element={
                   <RequireAuth>
                     <AlertsPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/account"
+                element={
+                  <RequireAuth>
+                    <AccountPage />
                   </RequireAuth>
                 }
               />

@@ -21,6 +21,7 @@ export function AppHeader() {
         {email ? (
           <>
             <Link to="/alerts">Alerts</Link>
+            <Link to="/account">Account</Link>
             {role === 'ADMIN' && <Link to="/admin/users">Admin</Link>}
             <span className={styles.signedInAs}>Signed in as {email}</span>
             <button type="button" className={styles.signOut} onClick={signOut}>

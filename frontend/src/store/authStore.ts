@@ -9,6 +9,8 @@ interface AuthState {
   role: AuthResponse['role'] | null
   signIn: (response: AuthResponse) => void
   signOut: () => void
+  /** S8: reflects a successful email change without a full re-sign-in (token/role are unaffected). */
+  updateEmail: (email: string) => void
 }
 
 const SIGNED_OUT = { token: null, userId: null, email: null, role: null } as const
@@ -30,6 +32,7 @@ export const useAuthStore = create<AuthState>()(
           role: response.role,
         }),
       signOut: () => set(SIGNED_OUT),
+      updateEmail: (email) => set({ email }),
     }),
     { name: 'market-hub.auth' },
   ),
