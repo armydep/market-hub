@@ -134,7 +134,7 @@ sequenceDiagram
   U->>SPA: open link, set new password
   SPA->>API: POST /auth/password-reset/confirm
   API->>Svc: confirmReset(token, newPassword)
-  Svc->>DB: find by hash(token); reject if expired/used
+  Svc->>DB: find by hash(token), reject if expired/used
   Svc->>DB: update passwordHash, mark token used, clear lockout
   Svc-->>API: 200
 ```
