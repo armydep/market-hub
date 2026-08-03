@@ -1,5 +1,5 @@
 import { HttpResponse, http } from 'msw'
-import type { Account, AdminUser, AlertCondition, Coin, PriceAlert } from '../api/types'
+import type { Account, AdminUser, AlertCondition, AlertNotification, Coin, PriceAlert } from '../api/types'
 import {
   ACCOUNT,
   ACTIVE_ALERT,
@@ -10,6 +10,7 @@ import {
   COINS,
   LAST_UPDATED,
   LOCKED_EMAIL,
+  NOTIFICATION,
   OTHER_REGISTERED_EMAIL,
   PASSWORD_RESET_CONFIRM_MESSAGE,
   PASSWORD_RESET_REQUEST_MESSAGE,
@@ -142,6 +143,12 @@ export function resetAccount() {
   account = { ...ACCOUNT }
   currentPassword = REGISTERED_PASSWORD
   savedPreferences = null
+}
+
+/** A mutable working copy of NOTIFICATION, for the S10 clear-action tests. */
+let notifications: AlertNotification[] = [{ ...NOTIFICATION }]
+export function resetNotifications() {
+  notifications = [{ ...NOTIFICATION }]
 }
 
 /** Mirrors com.am.market_hub.alert.domain.AlertCondition#isSatisfiedBy. */
@@ -538,5 +545,20 @@ export const handlers = [
     }
     savedPreferences = body.visibleColumns
     return HttpResponse.json({ visibleColumns: savedPreferences })
+  }),
+
+  http.get('/api/notifications', () => HttpResponse.json(notifications)),
+
+  http.post('/api/notifications/:id/clear', ({ params }) => {
+    const index = notifications.findIndex((n) => n.id === Number(params.id))
+    if (index === -1) {
+      return HttpResponse.json(
+        { timestamp: new Date().toISOString(), status: 404, error: 'Not Found',
+          message: `Unknown notification: ${params.id}` },
+        { status: 404 },
+      )
+    }
+    const [cleared] = notifications.splice(index, 1)
+    return HttpResponse.json(cleared)
   }),
 ]

@@ -92,6 +92,16 @@ export interface PriceAlert {
   createdAt: string
 }
 
+/** Mirrors com.am.market_hub.notification.dto.NotificationResponse. */
+export interface AlertNotification {
+  id: number
+  symbol: string
+  condition: AlertCondition
+  targetPrice: number
+  triggeredPrice: number
+  triggeredAt: string
+}
+
 /** Mirrors com.am.market_hub.user.dto.AccountResponse. */
 export interface Account {
   id: number

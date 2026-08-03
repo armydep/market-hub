@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useNotifications } from '../hooks/useNotifications'
 import { useAuthStore } from '../store/authStore'
 import styles from './AppHeader.module.css'
 
@@ -11,6 +12,10 @@ export function AppHeader() {
   const email = useAuthStore((s) => s.email)
   const role = useAuthStore((s) => s.role)
   const signOut = useAuthStore((s) => s.signOut)
+  // Reads the same list query the Notifications page itself uses (S10) — no
+  // separate count endpoint for a number this small.
+  const notifications = useNotifications()
+  const notificationCount = notifications.data?.length ?? 0
 
   return (
     <header className={styles.header}>
@@ -21,6 +26,12 @@ export function AppHeader() {
         {email ? (
           <>
             <Link to="/alerts">Alerts</Link>
+            <Link to="/notifications">
+              Notifications
+              {notificationCount > 0 && (
+                <span className={styles.badge}>{notificationCount}</span>
+              )}
+            </Link>
             <Link to="/account">Account</Link>
             {role === 'ADMIN' && <Link to="/admin/users">Admin</Link>}
             <span className={styles.signedInAs}>Signed in as {email}</span>
