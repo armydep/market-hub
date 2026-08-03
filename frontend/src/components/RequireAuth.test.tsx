@@ -4,14 +4,14 @@ import { describe, expect, it } from 'vitest'
 import { useAuthStore } from '../store/authStore'
 import { RequireAuth } from './RequireAuth'
 
-function renderProtected() {
+function renderProtected(role?: 'ADMIN') {
   return render(
     <MemoryRouter initialEntries={['/protected']}>
       <Routes>
         <Route
           path="/protected"
           element={
-            <RequireAuth>
+            <RequireAuth role={role}>
               <div>secret content</div>
             </RequireAuth>
           }
@@ -38,5 +38,23 @@ describe('RequireAuth', () => {
 
     expect(screen.getByText('sign in page')).toBeInTheDocument()
     expect(screen.queryByText('secret content')).not.toBeInTheDocument()
+  })
+
+  it('shows an access-denied state for an authenticated user with the wrong role', () => {
+    useAuthStore.setState({ token: 'a.jwt.token', userId: 1, email: 'trader@example.com', role: 'TRADER' })
+
+    renderProtected('ADMIN')
+
+    expect(screen.getByText('Access denied')).toBeInTheDocument()
+    expect(screen.queryByText('secret content')).not.toBeInTheDocument()
+    expect(screen.queryByText('sign in page')).not.toBeInTheDocument()
+  })
+
+  it('renders the protected content for a matching role', () => {
+    useAuthStore.setState({ token: 'a.jwt.token', userId: 1, email: 'admin@example.com', role: 'ADMIN' })
+
+    renderProtected('ADMIN')
+
+    expect(screen.getByText('secret content')).toBeInTheDocument()
   })
 })

@@ -3,7 +3,9 @@ import { useState } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { AppHeader } from './components/AppHeader'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { RequireAuth } from './components/RequireAuth'
 import { EmptyState } from './components/States'
+import { AdminUsersPage } from './pages/AdminUsersPage'
 import { CoinDetailPage } from './pages/CoinDetailPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { RegisterPage } from './pages/RegisterPage'
@@ -34,6 +36,14 @@ export function App({ queryClient }: Props = {}) {
               <Route path="/coins/:symbol" element={<CoinDetailPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/sign-in" element={<SignInPage />} />
+              <Route
+                path="/admin/users"
+                element={
+                  <RequireAuth role="ADMIN">
+                    <AdminUsersPage />
+                  </RequireAuth>
+                }
+              />
               <Route
                 path="*"
                 element={<EmptyState title="Page not found" hint="That route doesn't exist." />}

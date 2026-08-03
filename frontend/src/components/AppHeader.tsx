@@ -9,6 +9,7 @@ import styles from './AppHeader.module.css'
  */
 export function AppHeader() {
   const email = useAuthStore((s) => s.email)
+  const role = useAuthStore((s) => s.role)
   const signOut = useAuthStore((s) => s.signOut)
 
   return (
@@ -19,6 +20,7 @@ export function AppHeader() {
       <nav className={styles.nav}>
         {email ? (
           <>
+            {role === 'ADMIN' && <Link to="/admin/users">Admin</Link>}
             <span className={styles.signedInAs}>Signed in as {email}</span>
             <button type="button" className={styles.signOut} onClick={signOut}>
               Sign out

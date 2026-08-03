@@ -16,15 +16,15 @@ shippable and testable, sized for one focused session, and — from S3 onward �
 | S0 | Skeleton + DB + health | — | ✅ merged |
 | S1 | Market ingestion + read API | F-001 (partial) | ✅ merged |
 | S2 | Market read API completion | F-001, F-002, F-003 | ✅ merged |
-| S3 | Frontend foundation + Public Market Dashboard | F-001, F-002 | 🔄 in review |
-| S4 | Asset Details | F-003 | ⬜ next |
-| S5 | Auth core (register / sign in / sign out) | F-004 | ⬜ |
-| S6 | Sign-in protection + account blocking | F-004 | ⬜ |
+| S3 | Frontend foundation + Public Market Dashboard | F-001, F-002 | ✅ merged |
+| S4 | Asset Details | F-003 | ✅ merged |
+| S5 | Auth core (register / sign in / sign out) | F-004 | ✅ merged |
+| S6 | Sign-in protection + account blocking | F-004 | ✅ merged |
 | S7 | Password reset | F-004 | ⬜ |
 | S8 | Account management + display preferences | F-009, F-001 | ⬜ |
 | S9 | Price alerts + evaluation | F-006 | ⬜ |
 | S10 | Notifications | F-007 | ⬜ |
-| S11 | Admin user management + audit | F-010 | ⬜ |
+| S11 | Admin user management + audit | F-010 | 🔄 in review |
 
 **Dependency graph**
 
@@ -244,9 +244,11 @@ F-007. A separate entity and lifecycle from the alert that spawned it.
   content identifies asset, condition, target, and trigger time; clear hides it; ownership isolation.
 
 ## S11 — Admin user management + audit  *(deps: S6)*
-F-010 and PRD §3.7.
+F-010 and PRD §3.7. See `docs/slices/11-admin-user-management.md` for the full spec.
 
-- `V9__admin_audit_log.sql`: actor, action, target user, timestamp.
+- `V4__admin_audit_log.sql` (not `V9` — S2 through S10's migrations were never created since
+  those slices were built out of order; S6 needed none, so S11's is the very next one): actor,
+  action, target user, timestamp.
 - Admin-only API guarded by `hasRole('ADMIN')` via the hierarchy: `GET /api/admin/users` (paged),
   `POST /api/admin/users/{id}/block`, `POST /api/admin/users/{id}/unblock`.
 - Every block/unblock writes an audit record in the same transaction as the state change.

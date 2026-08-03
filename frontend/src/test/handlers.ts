@@ -1,6 +1,7 @@
 import { HttpResponse, http } from 'msw'
-import type { Coin } from '../api/types'
+import type { AdminUser, Coin } from '../api/types'
 import {
+  ADMIN_USERS,
   AUTH_RESPONSE,
   BLOCKED_EMAIL,
   CATALOG,
@@ -96,6 +97,16 @@ export function failNextAuthLoginRequests(count: number) {
 }
 export function resetAuthLoginFailures() {
   authLoginFailuresRemaining = 0
+}
+
+/**
+ * A mutable working copy of ADMIN_USERS: block/unblock handlers below flip
+ * `blocked` on this array so a test can see the row actually change, without
+ * mutating the shared fixture itself.
+ */
+let adminUsers: AdminUser[] = ADMIN_USERS.map((u) => ({ ...u }))
+export function resetAdminUsers() {
+  adminUsers = ADMIN_USERS.map((u) => ({ ...u }))
 }
 
 function compare(a: Coin, b: Coin, field: string): number {
@@ -281,5 +292,45 @@ export const handlers = [
     }
 
     return HttpResponse.json(AUTH_RESPONSE)
+  }),
+
+  http.get('/api/admin/users', ({ request }) => {
+    const url = new URL(request.url)
+    const page = Number(url.searchParams.get('page') ?? 0)
+    const size = 20
+    const start = page * size
+    return HttpResponse.json({
+      content: adminUsers.slice(start, start + size),
+      page,
+      size,
+      totalElements: adminUsers.length,
+      totalPages: Math.max(1, Math.ceil(adminUsers.length / size)),
+    })
+  }),
+
+  http.post('/api/admin/users/:id/block', ({ params }) => {
+    const user = adminUsers.find((u) => u.id === Number(params.id))
+    if (!user) {
+      return HttpResponse.json(
+        { timestamp: new Date().toISOString(), status: 404, error: 'Not Found',
+          message: `Unknown user: ${params.id}` },
+        { status: 404 },
+      )
+    }
+    user.blocked = true
+    return HttpResponse.json(user)
+  }),
+
+  http.post('/api/admin/users/:id/unblock', ({ params }) => {
+    const user = adminUsers.find((u) => u.id === Number(params.id))
+    if (!user) {
+      return HttpResponse.json(
+        { timestamp: new Date().toISOString(), status: 404, error: 'Not Found',
+          message: `Unknown user: ${params.id}` },
+        { status: 404 },
+      )
+    }
+    user.blocked = false
+    return HttpResponse.json(user)
   }),
 ]

@@ -1,4 +1,4 @@
-import type { AuthResponse, Coin, ColumnCatalog } from '../api/types'
+import type { AdminUser, AuthResponse, Coin, ColumnCatalog } from '../api/types'
 
 export const CATALOG: ColumnCatalog = {
   supported: [
@@ -93,3 +93,16 @@ export const AUTH_RESPONSE: AuthResponse = {
   email: REGISTERED_EMAIL,
   role: 'TRADER',
 }
+
+/** A signed-in administrator, for the S11 admin-page tests. */
+export const ADMIN_AUTH_RESPONSE: AuthResponse = {
+  token: 'fixture.admin.jwt.token',
+  userId: 2,
+  email: 'admin@example.com',
+  role: 'ADMIN',
+}
+
+export const ADMIN_USERS: AdminUser[] = [
+  { id: 10, email: 'active-user@example.com', role: 'TRADER', blocked: false, createdAt: '2026-07-01T10:00:00Z' },
+  { id: 11, email: 'blocked-user@example.com', role: 'TRADER', blocked: true, createdAt: '2026-07-02T10:00:00Z' },
+]

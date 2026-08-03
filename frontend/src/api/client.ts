@@ -1,5 +1,7 @@
 import {
   ApiError,
+  type AdminUser,
+  type AdminUserPage,
   type ApiErrorBody,
   type AuthResponse,
   type Coin,
@@ -111,4 +113,16 @@ export function registerUser(credentials: Credentials, signal?: AbortSignal): Pr
 
 export function login(credentials: Credentials, signal?: AbortSignal): Promise<AuthResponse> {
   return postJson<AuthResponse>('/auth/login', credentials, signal)
+}
+
+export function fetchAdminUsers(page: number, token: string, signal?: AbortSignal): Promise<AdminUserPage> {
+  return getJson<AdminUserPage>(`/admin/users?page=${page}`, signal, token)
+}
+
+export function blockUser(id: number, token: string, signal?: AbortSignal): Promise<AdminUser> {
+  return postJson<AdminUser>(`/admin/users/${id}/block`, {}, signal, token)
+}
+
+export function unblockUser(id: number, token: string, signal?: AbortSignal): Promise<AdminUser> {
+  return postJson<AdminUser>(`/admin/users/${id}/unblock`, {}, signal, token)
 }

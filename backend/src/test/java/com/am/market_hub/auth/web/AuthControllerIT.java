@@ -168,7 +168,7 @@ class AuthControllerIT {
         String email = "trader-not-admin-" + System.nanoTime() + "@example.com";
         AuthResponse auth = register(email, "password123");
 
-        assertThatThrownBy(() -> client().get().uri("/test/admin-only")
+        assertThatThrownBy(() -> client().get().uri("/admin/users")
                         .header("Authorization", "Bearer " + auth.token())
                         .retrieve().body(String.class))
                 .isInstanceOfSatisfying(HttpClientErrorException.class, ex -> {
@@ -190,10 +190,10 @@ class AuthControllerIT {
 
         assertThat(admin.role()).isEqualTo("ADMIN");
 
-        String result = client().get().uri("/test/admin-only")
+        String result = client().get().uri("/admin/users")
                 .header("Authorization", "Bearer " + admin.token())
                 .retrieve().body(String.class);
 
-        assertThat(result).isEqualTo("ok");
+        assertThat(result).contains("\"content\"");
     }
 }
