@@ -1,12 +1,8 @@
+import { conditionLabel } from '../alertConditions'
 import { EmptyState, FatalError, LoadingState } from '../components/States'
 import { useClearNotification } from '../hooks/useClearNotification'
 import { useNotifications } from '../hooks/useNotifications'
 import styles from './NotificationsPage.module.css'
-
-const CONDITION_LABEL: Record<string, string> = {
-  ABOVE_OR_EQUAL: 'At or above',
-  BELOW_OR_EQUAL: 'At or below',
-}
 
 /** In-app alert-trigger notifications (PRD F-007). Registered users only. */
 export function NotificationsPage() {
@@ -39,8 +35,8 @@ export function NotificationsPage() {
             <li key={notification.id} className={styles.row}>
               <span className={styles.symbol}>{notification.symbol}</span>
               <span>
-                {CONDITION_LABEL[notification.condition] ?? notification.condition} $
-                {notification.targetPrice} — triggered at ${notification.triggeredPrice} on{' '}
+                {conditionLabel(notification.condition)} ${notification.targetPrice} — triggered
+                at ${notification.triggeredPrice} on{' '}
                 {new Date(notification.triggeredAt).toLocaleString()}
               </span>
               <button

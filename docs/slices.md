@@ -23,7 +23,7 @@ shippable and testable, sized for one focused session, and — from S3 onward �
 | S7 | Password reset | F-004 | ⬜ |
 | S8 | Account management + display preferences | F-009, F-001 | ⬜ |
 | S9 | Price alerts + evaluation | F-006 | ⬜ |
-| S10 | Notifications | F-007 | ⬜ |
+| S10 | Notifications | F-007 | 🔄 in review |
 | S11 | Admin user management + audit | F-010 | 🔄 in review |
 
 **Dependency graph**
