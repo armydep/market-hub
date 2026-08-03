@@ -20,6 +20,7 @@ export function AppHeader() {
       <nav className={styles.nav}>
         {email ? (
           <>
+            <Link to="/alerts">Alerts</Link>
             {role === 'ADMIN' && <Link to="/admin/users">Admin</Link>}
             <span className={styles.signedInAs}>Signed in as {email}</span>
             <button type="button" className={styles.signOut} onClick={signOut}>

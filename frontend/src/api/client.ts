@@ -2,12 +2,14 @@ import {
   ApiError,
   type AdminUser,
   type AdminUserPage,
+  type AlertCondition,
   type ApiErrorBody,
   type AuthResponse,
   type Coin,
   type CoinPage,
   type ColumnCatalog,
   type PasswordResetResponse,
+  type PriceAlert,
 } from './types'
 
 /**
@@ -65,6 +67,40 @@ export async function postJson<T>(
   })
   await throwIfError(response)
   return (await response.json()) as T
+}
+
+export async function patchJson<T>(
+  path: string,
+  body: unknown,
+  signal?: AbortSignal,
+  token?: string,
+): Promise<T> {
+  const response = await fetch(`${BASE}${path}`, {
+    method: 'PATCH',
+    signal,
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      ...authHeader(token),
+    },
+    body: JSON.stringify(body),
+  })
+  await throwIfError(response)
+  return (await response.json()) as T
+}
+
+/**
+ * For a 204-with-no-body response — `postJson`/`getJson` always call
+ * `response.json()`, which fails on an empty body, so DELETE needs its own
+ * helper rather than reusing them.
+ */
+export async function deleteRequest(path: string, signal?: AbortSignal, token?: string): Promise<void> {
+  const response = await fetch(`${BASE}${path}`, {
+    method: 'DELETE',
+    signal,
+    headers: { Accept: 'application/json', ...authHeader(token) },
+  })
+  await throwIfError(response)
 }
 
 export interface CoinQuery {
@@ -138,4 +174,44 @@ export function confirmPasswordReset(
   signal?: AbortSignal,
 ): Promise<PasswordResetResponse> {
   return postJson<PasswordResetResponse>('/auth/password-reset/confirm', { token, newPassword }, signal)
+}
+
+export interface AlertInput {
+  symbol: string
+  condition: AlertCondition
+  targetPrice: number
+}
+
+export interface AlertUpdateInput {
+  condition: AlertCondition
+  targetPrice: number
+}
+
+export function fetchActiveAlerts(token: string, signal?: AbortSignal): Promise<PriceAlert[]> {
+  return getJson<PriceAlert[]>('/alerts', signal, token)
+}
+
+export function fetchTriggeredAlerts(token: string, signal?: AbortSignal): Promise<PriceAlert[]> {
+  return getJson<PriceAlert[]>('/alerts/triggered', signal, token)
+}
+
+export function createAlert(body: AlertInput, token: string, signal?: AbortSignal): Promise<PriceAlert> {
+  return postJson<PriceAlert>('/alerts', body, signal, token)
+}
+
+export function updateAlert(
+  id: number,
+  body: AlertUpdateInput,
+  token: string,
+  signal?: AbortSignal,
+): Promise<PriceAlert> {
+  return patchJson<PriceAlert>(`/alerts/${id}`, body, signal, token)
+}
+
+export function deleteAlert(id: number, token: string, signal?: AbortSignal): Promise<void> {
+  return deleteRequest(`/alerts/${id}`, signal, token)
+}
+
+export function clearAlert(id: number, token: string, signal?: AbortSignal): Promise<PriceAlert> {
+  return postJson<PriceAlert>(`/alerts/${id}/clear`, {}, signal, token)
 }

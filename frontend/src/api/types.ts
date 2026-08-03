@@ -77,6 +77,21 @@ export interface PasswordResetResponse {
   message: string
 }
 
+export type AlertCondition = 'ABOVE_OR_EQUAL' | 'BELOW_OR_EQUAL'
+
+/** Mirrors com.am.market_hub.alert.dto.AlertResponse. */
+export interface PriceAlert {
+  id: number
+  symbol: string
+  condition: AlertCondition
+  targetPrice: number
+  active: boolean
+  triggeredAt: string | null
+  triggeredPrice: number | null
+  clearedAt: string | null
+  createdAt: string
+}
+
 /** The body GlobalExceptionHandler emits for every error. */
 export interface ApiErrorBody {
   timestamp: string
