@@ -72,6 +72,11 @@ export interface AdminUserPage {
   totalPages: number
 }
 
+/** Mirrors com.am.market_hub.auth.dto.PasswordResetResponse. */
+export interface PasswordResetResponse {
+  message: string
+}
+
 /** The body GlobalExceptionHandler emits for every error. */
 export interface ApiErrorBody {
   timestamp: string

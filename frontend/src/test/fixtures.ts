@@ -106,3 +106,16 @@ export const ADMIN_USERS: AdminUser[] = [
   { id: 10, email: 'active-user@example.com', role: 'TRADER', blocked: false, createdAt: '2026-07-01T10:00:00Z' },
   { id: 11, email: 'blocked-user@example.com', role: 'TRADER', blocked: true, createdAt: '2026-07-02T10:00:00Z' },
 ]
+
+/**
+ * Fixed regardless of a mocked-known vs. mocked-unknown email, proving the
+ * S7 no-enumeration guarantee at the UI level: the client never branches on
+ * anything the server didn't already decide.
+ */
+export const PASSWORD_RESET_REQUEST_MESSAGE =
+  'If an account with that email exists, a password reset link has been sent.'
+export const PASSWORD_RESET_CONFIRM_MESSAGE = 'Your password has been updated. You can now sign in.'
+
+/** The confirm handler accepts only this token; anything else is rejected as invalid/expired. */
+export const VALID_RESET_TOKEN = 'valid-reset-token'
+export const INVALID_RESET_TOKEN = 'invalid-reset-token'
