@@ -1,4 +1,4 @@
-import type { AdminUser, AuthResponse, Coin, ColumnCatalog } from '../api/types'
+import type { AdminUser, AuthResponse, Coin, ColumnCatalog, PriceAlert } from '../api/types'
 
 export const CATALOG: ColumnCatalog = {
   supported: [
@@ -119,3 +119,28 @@ export const PASSWORD_RESET_CONFIRM_MESSAGE = 'Your password has been updated. Y
 /** The confirm handler accepts only this token; anything else is rejected as invalid/expired. */
 export const VALID_RESET_TOKEN = 'valid-reset-token'
 export const INVALID_RESET_TOKEN = 'invalid-reset-token'
+
+/** One active and one triggered alert, for the S9 alerts-page tests. */
+export const ACTIVE_ALERT: PriceAlert = {
+  id: 100,
+  symbol: 'BTC',
+  condition: 'ABOVE_OR_EQUAL',
+  targetPrice: 70000,
+  active: true,
+  triggeredAt: null,
+  triggeredPrice: null,
+  clearedAt: null,
+  createdAt: '2026-07-30T10:00:00Z',
+}
+
+export const TRIGGERED_ALERT: PriceAlert = {
+  id: 101,
+  symbol: 'ETH',
+  condition: 'BELOW_OR_EQUAL',
+  targetPrice: 2500,
+  active: false,
+  triggeredAt: '2026-07-31T09:00:00Z',
+  triggeredPrice: 2400,
+  clearedAt: null,
+  createdAt: '2026-07-29T10:00:00Z',
+}

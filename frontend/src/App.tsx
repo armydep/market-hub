@@ -6,6 +6,7 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { RequireAuth } from './components/RequireAuth'
 import { EmptyState } from './components/States'
 import { AdminUsersPage } from './pages/AdminUsersPage'
+import { AlertsPage } from './pages/AlertsPage'
 import { CoinDetailPage } from './pages/CoinDetailPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
@@ -40,6 +41,14 @@ export function App({ queryClient }: Props = {}) {
               <Route path="/sign-in" element={<SignInPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route
+                path="/alerts"
+                element={
+                  <RequireAuth>
+                    <AlertsPage />
+                  </RequireAuth>
+                }
+              />
               <Route
                 path="/admin/users"
                 element={

@@ -1,6 +1,7 @@
 import { HttpResponse, http } from 'msw'
-import type { AdminUser, Coin } from '../api/types'
+import type { AdminUser, AlertCondition, Coin, PriceAlert } from '../api/types'
 import {
+  ACTIVE_ALERT,
   ADMIN_USERS,
   AUTH_RESPONSE,
   BLOCKED_EMAIL,
@@ -12,6 +13,7 @@ import {
   PASSWORD_RESET_REQUEST_MESSAGE,
   REGISTERED_EMAIL,
   REGISTERED_PASSWORD,
+  TRIGGERED_ALERT,
   VALID_RESET_TOKEN,
 } from './fixtures'
 
@@ -110,6 +112,23 @@ export function resetAuthLoginFailures() {
 let adminUsers: AdminUser[] = ADMIN_USERS.map((u) => ({ ...u }))
 export function resetAdminUsers() {
   adminUsers = ADMIN_USERS.map((u) => ({ ...u }))
+}
+
+/**
+ * A mutable working copy of the alert fixtures: create/update/delete/clear
+ * handlers below mutate this array so a test can see the row actually change,
+ * without mutating the shared fixtures themselves.
+ */
+let alerts: PriceAlert[] = [{ ...ACTIVE_ALERT }, { ...TRIGGERED_ALERT }]
+let nextAlertId = 200
+export function resetAlerts() {
+  alerts = [{ ...ACTIVE_ALERT }, { ...TRIGGERED_ALERT }]
+  nextAlertId = 200
+}
+
+/** Mirrors com.am.market_hub.alert.domain.AlertCondition#isSatisfiedBy. */
+function isSatisfiedBy(condition: AlertCondition, price: number, target: number): boolean {
+  return condition === 'ABOVE_OR_EQUAL' ? price >= target : price <= target
 }
 
 function compare(a: Coin, b: Coin, field: string): number {
@@ -349,5 +368,101 @@ export const handlers = [
       )
     }
     return HttpResponse.json({ message: PASSWORD_RESET_CONFIRM_MESSAGE })
+  }),
+
+  http.get('/api/alerts', () => HttpResponse.json(alerts.filter((a) => a.active))),
+
+  http.get('/api/alerts/triggered', () =>
+    HttpResponse.json(alerts.filter((a) => !a.active && !a.clearedAt)),
+  ),
+
+  http.post('/api/alerts', async ({ request }) => {
+    const body = (await request.json()) as {
+      symbol: string
+      condition: AlertCondition
+      targetPrice: number
+    }
+
+    const coin = COINS.find((c) => c.symbol.toUpperCase() === body.symbol.toUpperCase())
+    if (!coin || coin.price === null) {
+      return HttpResponse.json(
+        { timestamp: new Date().toISOString(), status: 400, error: 'Bad Request',
+          message: `Unknown symbol: ${body.symbol}` },
+        { status: 400 },
+      )
+    }
+
+    if (isSatisfiedBy(body.condition, coin.price, body.targetPrice)) {
+      return HttpResponse.json(
+        { timestamp: new Date().toISOString(), status: 400, error: 'Bad Request',
+          message: 'Condition is already satisfied by the current price' },
+        { status: 400 },
+      )
+    }
+
+    const created: PriceAlert = {
+      id: nextAlertId++,
+      symbol: coin.symbol,
+      condition: body.condition,
+      targetPrice: body.targetPrice,
+      active: true,
+      triggeredAt: null,
+      triggeredPrice: null,
+      clearedAt: null,
+      createdAt: new Date().toISOString(),
+    }
+    alerts.push(created)
+    return HttpResponse.json(created, { status: 201 })
+  }),
+
+  http.patch('/api/alerts/:id', async ({ request, params }) => {
+    const body = (await request.json()) as { condition: AlertCondition; targetPrice: number }
+    const alert = alerts.find((a) => a.id === Number(params.id))
+    if (!alert || !alert.active) {
+      return HttpResponse.json(
+        { timestamp: new Date().toISOString(), status: 404, error: 'Not Found',
+          message: `Unknown alert: ${params.id}` },
+        { status: 404 },
+      )
+    }
+
+    const coin = COINS.find((c) => c.symbol.toUpperCase() === alert.symbol.toUpperCase())
+    if (coin && coin.price !== null && isSatisfiedBy(body.condition, coin.price, body.targetPrice)) {
+      return HttpResponse.json(
+        { timestamp: new Date().toISOString(), status: 400, error: 'Bad Request',
+          message: 'Condition is already satisfied by the current price' },
+        { status: 400 },
+      )
+    }
+
+    alert.condition = body.condition
+    alert.targetPrice = body.targetPrice
+    return HttpResponse.json(alert)
+  }),
+
+  http.delete('/api/alerts/:id', ({ params }) => {
+    const index = alerts.findIndex((a) => a.id === Number(params.id) && a.active)
+    if (index === -1) {
+      return HttpResponse.json(
+        { timestamp: new Date().toISOString(), status: 404, error: 'Not Found',
+          message: `Unknown alert: ${params.id}` },
+        { status: 404 },
+      )
+    }
+    alerts.splice(index, 1)
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  http.post('/api/alerts/:id/clear', ({ params }) => {
+    const alert = alerts.find((a) => a.id === Number(params.id))
+    if (!alert || alert.active || alert.clearedAt) {
+      return HttpResponse.json(
+        { timestamp: new Date().toISOString(), status: 404, error: 'Not Found',
+          message: `Unknown alert: ${params.id}` },
+        { status: 404 },
+      )
+    }
+    alert.clearedAt = new Date().toISOString()
+    return HttpResponse.json(alert)
   }),
 ]
