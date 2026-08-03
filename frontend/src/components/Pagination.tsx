@@ -5,9 +5,11 @@ interface Props {
   totalPages: number
   totalElements: number
   onPageChange: (page: number) => void
+  /** What totalElements counts, for the summary line. Defaults to the dashboard's original wording. */
+  unit?: string
 }
 
-export function Pagination({ page, totalPages, totalElements, onPageChange }: Props) {
+export function Pagination({ page, totalPages, totalElements, onPageChange, unit = 'coins' }: Props) {
   const isFirst = page <= 0
   const isLast = totalPages === 0 || page >= totalPages - 1
 
@@ -16,7 +18,7 @@ export function Pagination({ page, totalPages, totalElements, onPageChange }: Pr
       <span className={styles.summary} data-testid="page-summary">
         {totalElements === 0
           ? 'No results'
-          : `Page ${page + 1} of ${totalPages} · ${totalElements} coins`}
+          : `Page ${page + 1} of ${totalPages} · ${totalElements} ${unit}`}
       </span>
       <div className={styles.controls}>
         <button type="button" onClick={() => onPageChange(0)} disabled={isFirst}>

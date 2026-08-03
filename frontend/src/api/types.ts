@@ -54,6 +54,24 @@ export interface AuthResponse {
   role: 'TRADER' | 'MODERATOR' | 'ADMIN'
 }
 
+/** Mirrors com.am.market_hub.admin.dto.AdminUserResponse — never includes a password hash. */
+export interface AdminUser {
+  id: number
+  email: string
+  role: 'TRADER' | 'MODERATOR' | 'ADMIN'
+  blocked: boolean
+  createdAt: string
+}
+
+/** Mirrors com.am.market_hub.admin.dto.AdminUserPageResponse. Fixed page size, no search/sort. */
+export interface AdminUserPage {
+  content: AdminUser[]
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
+}
+
 /** The body GlobalExceptionHandler emits for every error. */
 export interface ApiErrorBody {
   timestamp: string
